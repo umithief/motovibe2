@@ -10,9 +10,9 @@ const PORT = process.env.PORT || 5000;
 
 // ÖNEMLİ: Aşağıdaki satırdaki <password> ve xxxxx alanlarını kendi bilgilerinizle değiştirin!
 // Güvenlik için bu bilgiyi .env dosyasında saklamanız önerilir.
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://umithief:14531453@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://admin:<14531453>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority';
 
-if (MONGO_URI.includes('14531453')) {
+if (MONGO_URI.includes('<password>')) {
   console.warn('⚠️ DİKKAT: MongoDB bağlantı adresindeki <password> alanını değiştirmediniz. Sunucu veritabanına bağlanamayabilir.');
 }
 

@@ -11,9 +11,9 @@ const getEnv = () => {
 
 const env = getEnv();
 
-// Backend bağlantı sorunlarını çözmek için SİMÜLASYON (MOCK) modu aktif edildi.
-// Veriler tarayıcı hafızasında (LocalStorage) tutulacaktır.
-const USE_MOCK = true; 
+// ÖNEMLİ: Verilerin kalıcı olması için Backend'i zorunlu kılıyoruz.
+// Lütfen backend klasöründe 'node server.js' komutunu çalıştırın.
+const USE_MOCK = false; 
 
 export const CONFIG = {
     USE_MOCK_API: USE_MOCK, 

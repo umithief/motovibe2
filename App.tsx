@@ -17,7 +17,7 @@ import { SupportChatWidget } from './components/SupportChatWidget';
 import { ProductQuickViewModal } from './components/ProductQuickViewModal';
 import { ToastContainer, ToastMessage, ToastType } from './components/Toast';
 import { CategoryGrid } from './components/CategoryGrid'; 
-import { RideMode } from './components/RideMode'; // NEW
+import { RideMode } from './components/RideMode'; 
 import { authService } from './services/auth';
 import { orderService } from './services/orderService';
 import { productService } from './services/productService';
@@ -58,6 +58,12 @@ export const App: React.FC = () => {
 
   // Session Tracking
   const sessionStartTime = useRef(Date.now());
+  const userRef = useRef<User | null>(null); // Ref to hold current user for cleanup function
+
+  // Update user ref whenever user state changes
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   // Toast Helper
   const addToast = (type: ToastType, message: string) => {
@@ -118,9 +124,10 @@ export const App: React.FC = () => {
     const trackSession = () => {
         const duration = Math.round((Date.now() - sessionStartTime.current) / 1000);
         if (duration > 0) {
+            // Use ref to get the latest user state inside the event listener
             statsService.trackEvent('session_duration', { 
                 duration,
-                userId: user?.id
+                userId: userRef.current?.id
             });
         }
     };
@@ -140,6 +147,7 @@ export const App: React.FC = () => {
         clearInterval(timer);
         window.removeEventListener('beforeunload', trackSession);
         window.removeEventListener('scroll', handleScroll);
+        // Cleanup sırasında da track edelim (SPA navigasyonu için)
         trackSession();
     };
   }, []);

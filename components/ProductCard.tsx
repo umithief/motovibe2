@@ -45,7 +45,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
   return (
     <div 
       onClick={() => onClick(product)}
-      className="group relative bg-[#0a0a0a] border border-white/5 rounded-xl overflow-hidden transition-all duration-500 hover:border-moto-accent/50 hover:shadow-[0_0_30px_rgba(255,31,31,0.15)] hover:-translate-y-1 cursor-pointer flex flex-col h-full"
+      className="group relative bg-[#0a0a0a] border border-white/5 rounded-xl overflow-hidden transition-all duration-500 hover:border-moto-accent/50 hover:shadow-[0_0_30px_rgba(255,31,31,0.25)] hover:-translate-y-2 hover:scale-[1.02] cursor-pointer flex flex-col h-full will-change-transform"
     >
       {/* Image Section */}
       <div className="relative aspect-[4/5] overflow-hidden bg-black">
@@ -65,7 +65,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         
         {/* Top Badges */}
         <div className="absolute top-3 left-3 flex gap-2 z-20">
-           <div className="bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
+           <div className="bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1 shadow-lg">
               <Zap className="w-3 h-3 text-moto-accent fill-moto-accent" />
               {product.category}
            </div>
@@ -83,14 +83,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 pointer-events-none">
             <button 
                 onClick={handleQuickView}
-                className="pointer-events-auto transform translate-y-4 group-hover:translate-y-0 group-hover:scale-105 transition-all duration-300 bg-white/90 backdrop-blur-md text-black font-display font-bold py-3 px-8 rounded-full flex items-center gap-2 hover:bg-moto-accent hover:text-white shadow-[0_0_20px_rgba(0,0,0,0.5)] border border-white/20"
+                className="pointer-events-auto transform translate-y-4 group-hover:translate-y-0 group-hover:scale-110 transition-all duration-300 bg-white/90 backdrop-blur-md text-black font-display font-bold py-3 px-8 rounded-full flex items-center gap-2 hover:bg-moto-accent hover:text-white shadow-[0_0_25px_rgba(255,255,255,0.3)] border border-white/20"
             >
                 <Eye className="w-4 h-4" /> HIZLI BAKIŞ
             </button>
         </div>
 
         {/* Rating Badge (Bottom Left) */}
-        <div className="absolute bottom-3 left-3 z-20 bg-black/60 backdrop-blur-md px-2 py-1 rounded flex items-center gap-1 border border-white/10">
+        <div className="absolute bottom-3 left-3 z-20 bg-black/60 backdrop-blur-md px-2 py-1 rounded flex items-center gap-1 border border-white/10 shadow-lg">
           <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
           <span className="text-xs font-bold text-white font-mono">{product.rating}</span>
         </div>
@@ -99,7 +99,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
       {/* Details Section */}
       <div className="p-4 flex flex-col flex-1 relative bg-gradient-to-b from-[#0a0a0a] to-[#050505]">
         <div className="flex-1">
-            <h3 className="text-lg font-display font-bold text-white leading-tight mb-1 line-clamp-2 group-hover:text-moto-accent transition-colors">
+            <h3 className="text-lg font-display font-bold text-white leading-tight mb-1 line-clamp-2 group-hover:text-moto-accent transition-colors duration-300">
                 {product.name}
             </h3>
             <p className="text-xs text-gray-500 line-clamp-1 mb-3">{product.features[0]}</p>
@@ -108,13 +108,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         <div className="flex items-end justify-between mt-2 border-t border-white/5 pt-3">
            <div>
                <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-0.5">FİYAT</p>
-               <span className="text-xl font-mono font-bold text-white">₺{product.price.toLocaleString('tr-TR')}</span>
+               <span className="text-xl font-mono font-bold text-white text-shadow">₺{product.price.toLocaleString('tr-TR')}</span>
            </div>
            
            <Button 
                 variant={isAdded ? "secondary" : "cyber"} 
                 size="sm"
-                className={`transition-all duration-300 ${
+                className={`transition-all duration-300 hover:scale-105 ${
                   isAdded 
                     ? '!bg-green-600 !text-white !border-green-600 shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
                     : ''
