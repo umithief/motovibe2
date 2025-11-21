@@ -7,7 +7,14 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/motovibe';
+
+// ÖNEMLİ: Aşağıdaki satırdaki <password> ve xxxxx alanlarını kendi bilgilerinizle değiştirin!
+// Güvenlik için bu bilgiyi .env dosyasında saklamanız önerilir.
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://umithief:14531453@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority';
+
+if (MONGO_URI.includes('14531453')) {
+  console.warn('⚠️ DİKKAT: MongoDB bağlantı adresindeki <password> alanını değiştirmediniz. Sunucu veritabanına bağlanamayabilir.');
+}
 
 // Middleware
 app.use(cors({
@@ -97,7 +104,7 @@ const categorySchema = new mongoose.Schema({
 });
 const Category = mongoose.models.Category || mongoose.model('Category', categorySchema);
 
-// FORUM SCHEMAS (NEW)
+// FORUM SCHEMAS
 const forumCommentSchema = new mongoose.Schema({
   id: String,
   authorId: String,
@@ -156,9 +163,9 @@ const seedDatabase = async () => {
         if (prodCount === 0) {
             console.log('📦 Ürünler veritabanına ekleniyor...');
             await Product.insertMany([
-                { name: "AeroSpeed Carbon Pro Kask", description: "Yüksek hız aerodinamiği için...", price: 8500, category: "Kask", image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=800&auto=format&fit=crop", images: ["https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=800&auto=format&fit=crop"], rating: 4.8, features: ["Karbon Fiber", "Pinlock"], stock: 15 },
-                { name: "Urban Rider Deri Mont", description: "Şehir içi sürüşler için...", price: 5200, category: "Mont", image: "https://images.unsplash.com/photo-1559582930-bb01987cf4dd?q=80&w=800&auto=format&fit=crop", images: ["https://images.unsplash.com/photo-1559582930-bb01987cf4dd?q=80&w=800&auto=format&fit=crop"], rating: 4.6, features: ["%100 Deri", "D3O"], stock: 8 },
-                { name: "ProVision İnterkom", description: "Grup sürüşleri için...", price: 2900, category: "İnterkom", image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop", images: ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop"], rating: 4.7, features: ["1.2km Menzil", "Su Geçirmez"], stock: 30 }
+                { name: "AeroSpeed Carbon Pro Kask", description: "Yüksek hız aerodinamiği için tasarlanmış ultra hafif karbon fiber kask. Maksimum görüş açısı ve gelişmiş havalandırma sistemi.", price: 8500, category: "Kask", image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=800&auto=format&fit=crop", images: ["https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=800&auto=format&fit=crop"], rating: 4.8, features: ["Karbon Fiber", "Pinlock"], stock: 15 },
+                { name: "Urban Rider Deri Mont", description: "Şehir içi sürüşler için şık ve korumalı deri mont. D3O korumalar ile maksimum güvenlik, vintage görünüm.", price: 5200, category: "Mont", image: "https://images.unsplash.com/photo-1559582930-bb01987cf4dd?q=80&w=800&auto=format&fit=crop", images: ["https://images.unsplash.com/photo-1559582930-bb01987cf4dd?q=80&w=800&auto=format&fit=crop"], rating: 4.6, features: ["%100 Deri", "D3O"], stock: 8 },
+                { name: "ProVision İnterkom", description: "Grup sürüşleri için kristal netliğinde ses sağlayan, uzun menzilli Bluetooth interkom.", price: 2900, category: "İnterkom", image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop", images: ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop"], rating: 4.7, features: ["1.2km Menzil", "Su Geçirmez"], stock: 30 }
             ]);
         }
 
@@ -203,10 +210,6 @@ const seedDatabase = async () => {
 
 // --- ROUTES ---
 
-// ... (Auth, Product, Order, Slide, Stats, Analytics, Category routes from previous version) ...
-// To save space I'm keeping the existing routes implicit and adding only Forum routes below.
-// In a real file, all routes would be present.
-
 // 1. Auth Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
@@ -238,13 +241,13 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 2. Product Routes (Simplified)
+// 2. Product Routes
 app.get('/api/products', async (req, res) => { const p = await Product.find().sort({ _id: -1 }); res.json(p); });
 app.post('/api/products', async (req, res) => { const p = new Product(req.body); await p.save(); res.status(201).json(p); });
 app.put('/api/products/:id', async (req, res) => { const p = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true }); res.json(p); });
 app.delete('/api/products/:id', async (req, res) => { await Product.findByIdAndDelete(req.params.id); res.json({ message: 'Deleted' }); });
 
-// 3. Order Routes (Simplified)
+// 3. Order Routes
 app.get('/api/orders', async (req, res) => { 
     const { userId } = req.query; 
     const q = userId ? { userId } : {};
@@ -254,13 +257,13 @@ app.get('/api/orders', async (req, res) => {
 app.post('/api/orders', async (req, res) => { const o = new Order(req.body); await o.save(); res.status(201).json(o); });
 app.put('/api/orders/:id', async (req, res) => { const o = await Order.findByIdAndUpdate(req.params.id, req.body, { new: true }); res.json(o); });
 
-// 4. Slide Routes (Simplified)
+// 4. Slide Routes
 app.get('/api/slides', async (req, res) => { const s = await Slide.find(); res.json(s); });
 app.post('/api/slides', async (req, res) => { const s = new Slide(req.body); await s.save(); res.status(201).json(s); });
 app.put('/api/slides/:id', async (req, res) => { const s = await Slide.findByIdAndUpdate(req.params.id, req.body, { new: true }); res.json(s); });
 app.delete('/api/slides/:id', async (req, res) => { await Slide.findByIdAndDelete(req.params.id); res.json({message:'Deleted'}); });
 
-// 5. Stats (Simplified)
+// 5. Stats Routes
 app.get('/api/stats', async (req, res) => { 
     const all = await Visitor.find(); 
     const total = all.reduce((s,v)=>s+v.count,0); 
@@ -274,17 +277,17 @@ app.post('/api/stats/visit', async (req, res) => {
     res.json({success: true});
 });
 
-// 6. Analytics (Simplified)
+// 6. Analytics Routes
 app.get('/api/analytics/dashboard', async (req, res) => { res.json({totalProductViews:0, totalAddToCart:0, totalCheckouts:0, avgSessionDuration:0, topViewedProducts:[], topAddedProducts:[], activityTimeline:[]}); });
 app.post('/api/analytics/event', async (req, res) => { const e = new Analytics(req.body); await e.save(); res.json({success:true}); });
 
-// 7. Category Routes (Simplified)
+// 7. Category Routes
 app.get('/api/categories', async (req, res) => { const c = await Category.find(); res.json(c); });
 app.post('/api/categories', async (req, res) => { const c = new Category(req.body); await c.save(); res.status(201).json(c); });
 app.put('/api/categories/:id', async (req, res) => { const c = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true }); res.json(c); });
 app.delete('/api/categories/:id', async (req, res) => { await Category.findByIdAndDelete(req.params.id); res.json({message:'Deleted'}); });
 
-// 8. Forum Routes (NEW)
+// 8. Forum Routes
 app.get('/api/forum/topics', async (req, res) => {
     try {
         const topics = await ForumTopic.find().sort({ _id: -1 });
