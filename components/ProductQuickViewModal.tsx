@@ -1,14 +1,15 @@
 
 import React from 'react';
-import { X, Star, Shield, Check, ArrowRight, ShoppingBag } from 'lucide-react';
+import { X, Shield, Check, ArrowRight, ShoppingBag } from 'lucide-react';
 import { Product } from '../types';
 import { Button } from './Button';
+import { StarRating } from './StarRating';
 
 interface ProductQuickViewModalProps {
   product: Product | null;
   isOpen: boolean;
   onClose: () => void;
-  onAddToCart: (product: Product) => void;
+  onAddToCart: (product: Product, event?: React.MouseEvent) => void;
   onViewDetail: (product: Product) => void;
 }
 
@@ -68,9 +69,9 @@ export const ProductQuickViewModal: React.FC<ProductQuickViewModalProps> = ({
             <div className="w-full md:w-1/2 p-8 flex flex-col overflow-y-auto">
                 <div className="mb-auto">
                     <div className="flex items-center gap-2 mb-3">
-                        <div className="flex text-yellow-500">
-                            <Star className="w-4 h-4 fill-current" />
-                            <span className="ml-1 text-sm font-bold text-white">{product.rating}</span>
+                        <div className="flex items-center">
+                            <StarRating rating={product.rating} size={16} />
+                            <span className="ml-2 text-sm font-bold text-white">{product.rating}</span>
                         </div>
                         <span className="text-gray-500 text-xs">• Stokta Var</span>
                         <span className="text-gray-500 text-xs">• Hızlı Kargo</span>
@@ -107,8 +108,8 @@ export const ProductQuickViewModal: React.FC<ProductQuickViewModalProps> = ({
                         <Button 
                             variant="primary" 
                             className="flex-1 py-3 justify-center"
-                            onClick={() => {
-                                onAddToCart(product);
+                            onClick={(e) => {
+                                onAddToCart(product, e);
                                 onClose();
                             }}
                         >

@@ -1,137 +1,127 @@
+
 import React, { useState } from 'react';
-import { Star, Heart, ImageOff, Check, Eye, ShoppingBag, Zap } from 'lucide-react';
+import { Heart, Truck, Zap, Plus, Handshake, ShoppingCart, Image as ImageIcon } from 'lucide-react';
 import { Product } from '../types';
-import { Button } from './Button';
+import { motion } from 'framer-motion';
+import { StarRating } from './StarRating';
+import { Highlighter } from './Highlighter';
 
 interface ProductCardProps {
   product: Product;
-  onAddToCart: (product: Product) => void;
+  onAddToCart: (product: Product, event?: React.MouseEvent) => void;
   onClick: (product: Product) => void;
   onQuickView?: (product: Product) => void;
   isFavorite?: boolean;
   onToggleFavorite?: (product: Product) => void;
+  onCompare?: (product: Product) => void;
+  isCompared?: boolean;
+  highlight?: string;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onClick, onQuickView, isFavorite = false, onToggleFavorite }) => {
-  const [imgError, setImgError] = useState(false);
-  const [isAdded, setIsAdded] = useState(false);
-
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isAdded) return;
-
-    setIsAdded(true);
-    onAddToCart(product);
-
-    setTimeout(() => {
-      setIsAdded(false);
-    }, 1500);
-  };
-
-  const handleQuickView = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onQuickView) {
-        onQuickView(product);
-    }
-  };
-
-  const handleLike = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (onToggleFavorite) {
-          onToggleFavorite(product);
-      }
-  };
+export const ProductCard: React.FC<ProductCardProps> = ({ 
+  product, 
+  onAddToCart, 
+  onClick, 
+  isFavorite, 
+  onToggleFavorite,
+  highlight = ''
+}) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const isFreeShipping = product.price > 1000;
+  const isNegotiable = product.isNegotiable;
 
   return (
-    <div 
+    <motion.div 
       onClick={() => onClick(product)}
-      className="group relative bg-[#0a0a0a] border border-white/5 rounded-xl overflow-hidden transition-all duration-500 hover:border-moto-accent/50 hover:shadow-[0_0_30px_rgba(255,31,31,0.25)] hover:-translate-y-2 hover:scale-[1.02] cursor-pointer flex flex-col h-full will-change-transform"
+      className="group relative bg-white dark:bg-[#111] rounded-2xl border border-gray-200 dark:border-white/5 cursor-pointer transition-all duration-300 hover:shadow-lg overflow-hidden flex flex-col h-full"
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
     >
-      {/* Image Section */}
-      <div className="relative aspect-[4/5] overflow-hidden bg-black">
-        {!imgError ? (
+      {/* --- Image Section --- */}
+      <div className="relative aspect-[4/5] overflow-hidden bg-gray-100 dark:bg-zinc-900">
+          {/* Skeleton / Placeholder */}
+          {!imageLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-zinc-900 animate-pulse z-0">
+                <ImageIcon className="w-8 h-8 text-gray-300 dark:text-zinc-700" />
+            </div>
+          )}
+          
           <img 
             src={product.image} 
             alt={product.name} 
-            className="w-full h-full object-cover transition-all duration-700 ease-out group-hover:scale-110 group-hover:brightness-50"
-            onError={() => setImgError(true)}
+            className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-105 z-10 relative ${imageLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'}`}
+            loading="lazy"
+            onLoad={() => setImageLoaded(true)}
           />
-        ) : (
-          <div className="w-full h-full bg-gray-900 flex flex-col items-center justify-center text-gray-600">
-            <ImageOff className="w-12 h-12 mb-2" />
-            <span className="text-xs uppercase tracking-widest">Görsel Yok</span>
+          
+          {/* Quick Action (Hover) */}
+          <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-20">
+              <button 
+                  onClick={(e) => { e.stopPropagation(); onAddToCart(product, e); }}
+                  className="w-full bg-moto-accent text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 text-sm transition-transform active:scale-95"
+              >
+                  <ShoppingCart className="w-4 h-4" /> Sepete Ekle
+              </button>
           </div>
-        )}
-        
-        {/* Top Badges */}
-        <div className="absolute top-3 left-3 flex gap-2 z-20">
-           <div className="bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1 shadow-lg">
-              <Zap className="w-3 h-3 text-moto-accent fill-moto-accent" />
-              {product.category}
-           </div>
-        </div>
+          
+          {/* Favorite Button */}
+          {onToggleFavorite && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onToggleFavorite(product); }}
+                className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-md transition-transform hover:scale-110 active:scale-95 z-20"
+              >
+                  <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+              </button>
+          )}
 
-        {/* Wishlist Button */}
-        <button 
-            onClick={handleLike}
-            className="absolute top-3 right-3 z-20 p-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white hover:bg-moto-accent hover:border-moto-accent transition-all duration-300 group/heart"
-        >
-            <Heart className={`w-4 h-4 transition-transform group-active/heart:scale-75 ${isFavorite ? 'fill-moto-accent text-moto-accent' : 'group-hover/heart:text-white'}`} />
-        </button>
-
-        {/* Quick View Button (Centered on Hover) */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 pointer-events-none">
-            <button 
-                onClick={handleQuickView}
-                className="pointer-events-auto transform translate-y-4 group-hover:translate-y-0 group-hover:scale-110 transition-all duration-300 bg-white/90 backdrop-blur-md text-black font-display font-bold py-3 px-8 rounded-full flex items-center gap-2 hover:bg-moto-accent hover:text-white shadow-[0_0_25px_rgba(255,255,255,0.3)] border border-white/20"
-            >
-                <Eye className="w-4 h-4" /> HIZLI BAKIŞ
-            </button>
-        </div>
-
-        {/* Rating Badge (Bottom Left) */}
-        <div className="absolute bottom-3 left-3 z-20 bg-black/60 backdrop-blur-md px-2 py-1 rounded flex items-center gap-1 border border-white/10 shadow-lg">
-          <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-          <span className="text-xs font-bold text-white font-mono">{product.rating}</span>
-        </div>
+          {/* Badges */}
+          <div className="absolute top-3 left-3 flex flex-col gap-2 z-20 items-start">
+              {isNegotiable && (
+                  <div className="bg-purple-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1">
+                      <Handshake className="w-3 h-3" />
+                      <span>PAZARLIK</span>
+                  </div>
+              )}
+              {isFreeShipping && (
+                  <div className="bg-black/80 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1">
+                      <Truck className="w-3 h-3" /> 
+                      <span>KARGO BEDAVA</span>
+                  </div>
+              )}
+          </div>
       </div>
 
-      {/* Details Section */}
-      <div className="p-4 flex flex-col flex-1 relative bg-gradient-to-b from-[#0a0a0a] to-[#050505]">
-        <div className="flex-1">
-            <h3 className="text-lg font-display font-bold text-white leading-tight mb-1 line-clamp-2 group-hover:text-moto-accent transition-colors duration-300">
-                {product.name}
-            </h3>
-            <p className="text-xs text-gray-500 line-clamp-1 mb-3">{product.features[0]}</p>
-        </div>
-        
-        <div className="flex items-end justify-between mt-2 border-t border-white/5 pt-3">
-           <div>
-               <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-0.5">FİYAT</p>
-               <span className="text-xl font-mono font-bold text-white text-shadow">₺{product.price.toLocaleString('tr-TR')}</span>
-           </div>
-           
-           <Button 
-                variant={isAdded ? "secondary" : "cyber"} 
-                size="sm"
-                className={`transition-all duration-300 hover:scale-105 ${
-                  isAdded 
-                    ? '!bg-green-600 !text-white !border-green-600 shadow-[0_0_15px_rgba(34,197,94,0.4)]' 
-                    : ''
-                }`} 
-                onClick={handleAddToCart}
-                disabled={isAdded}
-             >
-                {isAdded ? (
-                  <span className="flex items-center gap-1">
-                    <Check className="w-3 h-3" />
+      {/* --- Content Section --- */}
+      <div className="p-4 flex flex-col flex-1">
+          <div className="flex justify-between items-start mb-2">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                  {product.category}
+              </span>
+              <StarRating rating={product.rating} size={10} className="flex" readonly />
+          </div>
+
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white line-clamp-2 mb-2 leading-tight group-hover:text-moto-accent transition-colors">
+              <Highlighter text={product.name} highlight={highlight} />
+          </h3>
+
+          <div className="mt-auto pt-3 border-t border-gray-100 dark:border-white/5 flex items-end justify-between">
+              <div className="flex flex-col">
+                  <span className="text-xs text-gray-400 line-through">
+                      ₺{(product.price * 1.25).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
                   </span>
-                ) : (
-                  <ShoppingBag className="w-4 h-4" />
-                )}
-             </Button>
-        </div>
+                  <span className="text-lg font-bold text-gray-900 dark:text-white">
+                      ₺{product.price.toLocaleString('tr-TR')}
+                  </span>
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); onAddToCart(product, e); }}
+                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-600 dark:text-white hover:bg-moto-accent hover:text-white transition-colors"
+              >
+                  <Plus className="w-4 h-4" />
+              </button>
+          </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

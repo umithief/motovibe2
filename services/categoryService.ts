@@ -1,3 +1,4 @@
+
 import { CategoryItem, ProductCategory } from '../types';
 import { DB, getStorage, setStorage, delay } from './db';
 import { CONFIG } from './config';
@@ -17,7 +18,7 @@ const DEFAULT_CATEGORIES: CategoryItem[] = [
     id: 'cat-2',
     name: 'MONTLAR',
     type: ProductCategory.JACKET,
-    image: 'https://images.unsplash.com/photo-1559582930-bb01987cf4dd?q=80&w=800&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1551028919-ac7edd05b6ea?q=80&w=800&auto=format&fit=crop',
     desc: '4 Mevsim Koruma',
     count: '85 Model',
     className: 'col-span-2 row-span-1'
@@ -26,7 +27,7 @@ const DEFAULT_CATEGORIES: CategoryItem[] = [
     id: 'cat-3',
     name: 'ELDİVENLER',
     type: ProductCategory.GLOVES,
-    image: 'https://images.unsplash.com/photo-1555481771-16417c6f656c?q=80&w=800&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1582650058723-41c60dc32700?q=80&w=800&auto=format&fit=crop',
     desc: 'Hassas Kontrol',
     count: '64 Model',
     className: 'col-span-1 row-span-1'
@@ -35,7 +36,7 @@ const DEFAULT_CATEGORIES: CategoryItem[] = [
     id: 'cat-4',
     name: 'BOTLAR',
     type: ProductCategory.BOOTS,
-    image: 'https://images.unsplash.com/photo-1555813456-96e25216239e?q=80&w=800&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1581321825690-919539c39733?q=80&w=800&auto=format&fit=crop',
     desc: 'Sağlam Adımlar',
     count: '32 Model',
     className: 'col-span-1 row-span-1'
@@ -44,7 +45,7 @@ const DEFAULT_CATEGORIES: CategoryItem[] = [
     id: 'cat-5',
     name: 'EKİPMAN',
     type: ProductCategory.PROTECTION,
-    image: 'https://images.unsplash.com/photo-1584556966052-c229e215e03f?q=80&w=800&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1558981000-f294a618282a?q=80&w=800&auto=format&fit=crop',
     desc: 'Zırh & Koruma',
     count: '95 Parça',
     className: 'col-span-1 md:col-span-2 row-span-1'
@@ -53,7 +54,7 @@ const DEFAULT_CATEGORIES: CategoryItem[] = [
     id: 'cat-6',
     name: 'İNTERKOM',
     type: ProductCategory.INTERCOM,
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=800&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1563820299-b8736e84d4ae?q=80&w=800&auto=format&fit=crop',
     desc: 'İletişim',
     count: '12 Model',
     className: 'col-span-1 md:col-span-2 row-span-1'

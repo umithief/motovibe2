@@ -4,7 +4,7 @@ import { CONFIG } from './config';
 import { logService } from './logService';
 
 export const authService = {
-  async register(data: Omit<User, 'id' | 'joinDate'>): Promise<User> {
+  async register(data: Omit<User, 'id' | 'joinDate' | 'points' | 'rank'>): Promise<User> {
     if (CONFIG.USE_MOCK_API) {
         await delay(800); 
         const users = getStorage<User[]>(DB.USERS, []);
@@ -17,7 +17,9 @@ export const authService = {
         ...data,
         id: crypto.randomUUID(),
         joinDate: new Date().toLocaleDateString('tr-TR'),
-        isAdmin: false
+        isAdmin: false,
+        points: 0,
+        rank: 'Scooter Çırağı'
         };
 
         users.push(newUser);
@@ -71,7 +73,9 @@ export const authService = {
                 email: '111@111',
                 joinDate: '01.01.2024',
                 isAdmin: true,
-                address: 'HQ'
+                address: 'HQ',
+                points: 9999,
+                rank: 'Yol Kaptanı'
             };
             this.setSession(adminUser, rememberMe);
             await logService.addLog('warning', 'Admin Girişi', 'Süper kullanıcı oturum açtı.');
@@ -85,6 +89,12 @@ export const authService = {
             // Hatalı giriş denemesi (Opsiyonel log)
             // await logService.addLog('error', 'Hatalı Giriş Denemesi', `Email: ${email}`);
             throw new Error('E-posta veya şifre hatalı.');
+        }
+
+        // Backward compatibility for old users without points
+        if (typeof user.points === 'undefined') {
+            user.points = 0;
+            user.rank = 'Scooter Çırağı';
         }
 
         this.setSession(user, rememberMe);
@@ -113,6 +123,123 @@ export const authService = {
             throw error;
         }
     }
+  },
+
+  async updateProfile(updatedData: Partial<User>): Promise<User> {
+    const currentUser = await this.getCurrentUser();
+    if (!currentUser) throw new Error('Oturum bulunamadı.');
+
+    const updatedUser = { ...currentUser, ...updatedData };
+
+    if (CONFIG.USE_MOCK_API) {
+        await delay(600);
+        const users = getStorage<User[]>(DB.USERS, []);
+        const index = users.findIndex(u => u.id === currentUser.id);
+        
+        if (index !== -1) {
+            users[index] = { ...users[index], ...updatedData };
+            setStorage(DB.USERS, users);
+        }
+        
+        // Oturumu güncelle
+        this.setSession(updatedUser, !!localStorage.getItem(DB.SESSION)); // LocalStorage varsa remember true kabul et
+        await logService.addLog('info', 'Profil Güncelleme', `Kullanıcı: ${updatedUser.name}`);
+        
+        return updatedUser;
+    } else {
+        // REAL BACKEND
+        try {
+             // Not: Backend endpoint'i varsayımsaldır, gerçekte uygun endpoint olmalı.
+            const response = await fetch(`${CONFIG.API_URL}/auth/profile`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedData)
+            });
+
+            if (!response.ok) throw new Error('Profil güncellenemedi');
+            
+            const resultUser = await response.json();
+            this.setSession(resultUser, !!localStorage.getItem(DB.SESSION));
+            return resultUser;
+        } catch (error) {
+             throw error;
+        }
+    }
+  },
+
+  async getAllUsers(): Promise<User[]> {
+      if (CONFIG.USE_MOCK_API) {
+          await delay(300);
+          return getStorage<User[]>(DB.USERS, []);
+      } else {
+          // REAL BACKEND
+          try {
+              const response = await fetch(`${CONFIG.API_URL}/users`);
+              if (!response.ok) return [];
+              return await response.json();
+          } catch {
+              return [];
+          }
+      }
+  },
+
+  async getUserById(userId: string): Promise<User | null> {
+      if (CONFIG.USE_MOCK_API) {
+          await delay(300);
+          const users = getStorage<User[]>(DB.USERS, []);
+          const user = users.find(u => u.id === userId);
+          if (user) return user;
+          
+          // Mock data for unknown users (e.g. initial forum data authors)
+          if (userId === 'admin-001' || userId === 'system') {
+              return {
+                  id: userId,
+                  name: 'MotoVibe Admin',
+                  email: 'admin@motovibe.tr',
+                  joinDate: '01.01.2024',
+                  isAdmin: true,
+                  points: 9999,
+                  rank: 'Yol Kaptanı',
+                  bio: 'Sistemin kurucusu ve baş yöneticisi.',
+                  garage: [
+                      { id: 999, brand: 'Ducati', model: 'Panigale V4R', year: '2024', km: '1.200', color: 'Kırmızı', image: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?q=80&w=800&auto=format&fit=crop' }
+                  ]
+              };
+          }
+          
+          // Default mock for unknown IDs to prevent crash
+          return {
+              id: userId,
+              name: 'Kullanıcı',
+              email: 'hidden',
+              joinDate: '2024',
+              points: 50,
+              rank: 'Scooter Çırağı',
+              garage: []
+          } as User;
+      } else {
+          try {
+              const response = await fetch(`${CONFIG.API_URL}/users/${userId}`);
+              if (response.ok) return await response.json();
+              return null;
+          } catch {
+              return null;
+          }
+      }
+  },
+
+  async deleteUser(userId: string): Promise<void> {
+      if (CONFIG.USE_MOCK_API) {
+          await delay(300);
+          const users = getStorage<User[]>(DB.USERS, []);
+          const filtered = users.filter(u => u.id !== userId);
+          setStorage(DB.USERS, filtered);
+      } else {
+          // REAL BACKEND
+          await fetch(`${CONFIG.API_URL}/users/${userId}`, {
+              method: 'DELETE'
+          });
+      }
   },
 
   async logout(): Promise<void> {

@@ -1,5 +1,7 @@
 {
   "name": "MotoVibe - Premium Motosiklet Aksesuarları",
   "description": "Motosiklet tutkunları için tasarlanmış, yapay zeka destekli modern e-ticaret platformu.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }

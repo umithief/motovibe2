@@ -3,13 +3,16 @@ import { MessageSquare, Heart, Eye, Plus, User, Hash, Calendar, ArrowLeft, Send,
 import { ForumTopic, User as UserType } from '../types';
 import { Button } from './Button';
 import { forumService } from '../services/forumService';
+import { UserAvatar } from './UserAvatar';
+import { Highlighter } from './Highlighter';
 
 interface ForumProps {
   user: UserType | null;
   onOpenAuth: () => void;
+  onViewProfile?: (userId: string) => void;
 }
 
-export const Forum: React.FC<ForumProps> = ({ user, onOpenAuth }) => {
+export const Forum: React.FC<ForumProps> = ({ user, onOpenAuth, onViewProfile }) => {
   const [view, setView] = useState<'list' | 'detail'>('list');
   const [isCreating, setIsCreating] = useState(false);
   const [topics, setTopics] = useState<ForumTopic[]>([]);
@@ -41,7 +44,6 @@ export const Forum: React.FC<ForumProps> = ({ user, onOpenAuth }) => {
     }
   };
 
-  // ... (Rest of the logic remains same as previous improved version) ...
   const handleCreateTopic = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -59,7 +61,7 @@ export const Forum: React.FC<ForumProps> = ({ user, onOpenAuth }) => {
   const handleTopicClick = (topic: ForumTopic) => {
     setSelectedTopic(topic);
     setView('detail');
-    window.scrollTo(0,0);
+    window.scrollTo({ top: 0, left: 0 });
   };
 
   const handleAddComment = async () => {
@@ -134,48 +136,47 @@ export const Forum: React.FC<ForumProps> = ({ user, onOpenAuth }) => {
 
           {/* Create Topic Form */}
           {isCreating && user && (
-              <div className="mb-12 bg-[#0a0a0a] border border-moto-accent/30 rounded-2xl p-8 animate-in slide-in-from-top-4 duration-500 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden">
+              <div className="mb-12 bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-moto-accent/30 rounded-2xl p-8 animate-in slide-in-from-top-4 duration-500 shadow-xl dark:shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden transition-colors">
                   <div className="absolute top-0 left-0 w-1 h-full bg-moto-accent"></div>
-                  <h3 className="text-2xl font-bold text-white mb-8 flex items-center gap-3 font-display">
-                      <div className="p-2 bg-moto-accent/20 rounded-lg border border-moto-accent/30">
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3 font-display">
+                      <div className="p-2 bg-moto-accent/10 dark:bg-moto-accent/20 rounded-lg border border-moto-accent/30">
                         <Plus className="w-5 h-5 text-moto-accent" />
                       </div>
                       Yeni Konu Oluştur
                   </h3>
                   <form onSubmit={handleCreateTopic} className="space-y-6">
-                      {/* ... Form Inputs (same as before) ... */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                           <div className="md:col-span-2 space-y-2">
-                              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Başlık</label>
-                              <input type="text" required value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="w-full bg-black border border-gray-800 rounded-xl p-4 text-white focus:border-moto-accent outline-none" placeholder="Başlık..." />
+                              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Başlık</label>
+                              <input type="text" required value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="w-full bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 rounded-xl p-4 text-gray-900 dark:text-white focus:border-moto-accent outline-none" placeholder="Başlık..." />
                           </div>
                           <div className="space-y-2">
-                              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Kategori</label>
-                              <select className="w-full bg-black border border-gray-800 rounded-xl p-4 text-white focus:border-moto-accent outline-none" value={newCategory} onChange={(e) => setNewCategory(e.target.value as any)}>{['Genel', 'Teknik', 'Gezi', 'Ekipman', 'Etkinlik'].map(c => <option key={c} value={c}>{c}</option>)}</select>
+                              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Kategori</label>
+                              <select className="w-full bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 rounded-xl p-4 text-gray-900 dark:text-white focus:border-moto-accent outline-none" value={newCategory} onChange={(e) => setNewCategory(e.target.value as any)}>{['Genel', 'Teknik', 'Gezi', 'Ekipman', 'Etkinlik'].map(c => <option key={c} value={c}>{c}</option>)}</select>
                           </div>
                       </div>
                       <div className="space-y-2">
-                          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">İçerik</label>
-                          <textarea required value={newContent} onChange={(e) => setNewContent(e.target.value)} className="w-full bg-black border border-gray-800 rounded-xl p-4 text-white focus:border-moto-accent outline-none min-h-[150px]" placeholder="İçerik..." />
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">İçerik</label>
+                          <textarea required value={newContent} onChange={(e) => setNewContent(e.target.value)} className="w-full bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 rounded-xl p-4 text-gray-900 dark:text-white focus:border-moto-accent outline-none min-h-[150px]" placeholder="İçerik..." />
                       </div>
-                      <div className="flex justify-end pt-4 border-t border-white/5"><Button type="submit" variant="cyber">YAYINLA</Button></div>
+                      <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-white/5"><Button type="submit" variant="cyber" className="border-gray-300 dark:border-white/20 text-black dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">YAYINLA</Button></div>
                   </form>
               </div>
           )}
 
           {/* Filters */}
-          <div className="sticky top-24 z-30 bg-[#050505]/80 backdrop-blur-xl py-4 border-b border-white/5 mb-8 -mx-4 px-4 sm:mx-0 sm:px-0 sm:bg-transparent sm:backdrop-blur-none sm:static sm:border-none">
-              <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#0a0a0a] border border-white/10 p-2 rounded-2xl">
+          <div className="sticky top-24 z-30 bg-gray-100/80 dark:bg-[#050505]/80 backdrop-blur-xl py-4 border-b border-gray-200 dark:border-white/5 mb-8 -mx-4 px-4 sm:mx-0 sm:px-0 sm:bg-transparent sm:backdrop-blur-none sm:static sm:border-none transition-colors">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/10 p-2 rounded-2xl shadow-sm">
                   <div className="flex gap-1 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 no-scrollbar px-2">
                       {['ALL', 'Genel', 'Teknik', 'Gezi', 'Ekipman', 'Etkinlik'].map(cat => (
-                          <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${selectedCategory === cat ? 'bg-moto-accent text-white shadow-lg shadow-moto-accent/20' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                          <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${selectedCategory === cat ? 'bg-moto-accent text-white shadow-lg shadow-moto-accent/20' : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}>
                               {cat === 'ALL' ? 'TÜMÜ' : cat.toUpperCase()}
                           </button>
                       ))}
                   </div>
                   <div className="relative w-full md:w-72 px-2 md:px-0">
                       <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                      <input type="text" placeholder="Konu ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl pl-11 pr-4 py-2.5 text-sm text-white focus:border-moto-accent outline-none" />
+                      <input type="text" placeholder="Konu ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-gray-50 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-xl pl-11 pr-4 py-2.5 text-sm text-gray-900 dark:text-white focus:border-moto-accent outline-none" />
                   </div>
               </div>
           </div>
@@ -185,26 +186,33 @@ export const Forum: React.FC<ForumProps> = ({ user, onOpenAuth }) => {
           ) : (
             <div className="space-y-4">
               {filteredTopics.length === 0 ? (
-                  <div className="text-center py-32 bg-[#0a0a0a] border border-white/5 rounded-3xl border-dashed"><p className="text-gray-500">Aradığınız kriterlere uygun konu yok.</p></div>
+                  <div className="text-center py-32 bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/5 rounded-3xl border-dashed transition-colors"><p className="text-gray-500">Aradığınız kriterlere uygun konu yok.</p></div>
               ) : (
                   filteredTopics.map((topic) => (
-                    <div key={topic.id} onClick={() => handleTopicClick(topic)} className="group bg-[#0a0a0a] border border-white/5 p-6 rounded-2xl hover:border-moto-accent/40 transition-all cursor-pointer relative overflow-hidden">
+                    <div key={topic.id} onClick={() => handleTopicClick(topic)} className="group bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/5 p-6 rounded-2xl hover:border-moto-accent/40 hover:shadow-lg dark:hover:shadow-none transition-all cursor-pointer relative overflow-hidden">
                       <div className="flex flex-col md:flex-row gap-6 md:items-center">
-                          <div className="flex md:flex-col items-center gap-4 md:gap-2 text-gray-500 text-xs md:border-r md:border-white/5 md:pr-6 md:w-24 flex-shrink-0 md:justify-center">
-                              <div className="flex flex-col items-center"><span className="text-lg font-bold text-white group-hover:text-moto-accent">{topic.likes}</span><span>Beğeni</span></div>
-                              <div className="flex flex-col items-center"><span className="text-lg font-bold text-gray-300">{topic.comments.length}</span><span>Yorum</span></div>
+                          <div className="flex md:flex-col items-center gap-4 md:gap-2 text-gray-500 text-xs md:border-r md:border-gray-200 dark:md:border-white/5 md:pr-6 md:w-24 flex-shrink-0 md:justify-center">
+                              <div className="flex flex-col items-center"><span className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-moto-accent">{topic.likes}</span><span>Beğeni</span></div>
+                              <div className="flex flex-col items-center"><span className="text-lg font-bold text-gray-700 dark:text-gray-300">{topic.comments.length}</span><span>Yorum</span></div>
                           </div>
                           <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center gap-2 mb-3">
-                                  <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded border bg-gray-800 text-gray-400 border-gray-700">{topic.category}</span>
+                                  <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded border bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700">{topic.category}</span>
                                   <span className="text-xs text-gray-500 font-mono flex items-center gap-1"><Calendar className="w-3 h-3" /> {topic.date}</span>
                               </div>
-                              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-moto-accent line-clamp-1">{topic.title}</h3>
-                              <p className="text-gray-400 text-sm line-clamp-2 mb-4">{topic.content}</p>
-                              <div className="flex items-center justify-between border-t border-white/5 pt-4 mt-2">
-                                  <div className="flex items-center gap-2.5">
-                                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white ring-2 ring-black ${topic.authorId.includes('admin') ? 'bg-gradient-to-br from-moto-accent to-red-900' : 'bg-gray-700'}`}>{topic.authorName.charAt(0)}</div>
-                                      <span className={`text-xs font-medium ${topic.authorId.includes('admin') ? 'text-moto-accent' : 'text-gray-300'}`}>{topic.authorName}</span>
+                              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-moto-accent line-clamp-1">
+                                <Highlighter text={topic.title} highlight={searchQuery} />
+                              </h3>
+                              <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-2 mb-4">
+                                <Highlighter text={topic.content} highlight={searchQuery} />
+                              </p>
+                              <div className="flex items-center justify-between border-t border-gray-100 dark:border-white/5 pt-4 mt-2">
+                                  <div 
+                                    className="flex items-center gap-2.5 z-10 hover:bg-white/5 p-1 rounded-lg transition-colors"
+                                    onClick={(e) => { e.stopPropagation(); if(onViewProfile) onViewProfile(topic.authorId); }}
+                                  >
+                                      <UserAvatar name={topic.authorName} size={24} />
+                                      <span className={`text-xs font-medium hover:underline ${topic.authorId.includes('admin') ? 'text-moto-accent' : 'text-gray-500 dark:text-gray-300'}`}>{topic.authorName}</span>
                                   </div>
                                   <div className="flex items-center gap-1 text-xs text-gray-500"><Eye className="w-3 h-3" /> {topic.views}</div>
                               </div>
@@ -223,16 +231,21 @@ export const Forum: React.FC<ForumProps> = ({ user, onOpenAuth }) => {
     if (!selectedTopic) return null;
     return (
       <div className="animate-in slide-in-from-right duration-500 max-w-5xl mx-auto">
-        <Button variant="ghost" onClick={() => setView('list')} className="mb-8 pl-0 hover:text-moto-accent text-gray-400"><ArrowLeft className="w-4 h-4 mr-2" /> FORUMA DÖN</Button>
-        <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl overflow-hidden mb-12">
-          <div className="p-8 md:p-12 border-b border-white/5 bg-gradient-to-b from-white/5 via-[#0f0f0f] to-[#0a0a0a]">
+        <Button variant="ghost" onClick={() => setView('list')} className="mb-8 pl-0 hover:text-moto-accent text-gray-500 dark:text-gray-400"><ArrowLeft className="w-4 h-4 mr-2" /> FORUMA DÖN</Button>
+        <div className="bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-white/10 rounded-3xl overflow-hidden mb-12 shadow-sm transition-colors">
+          <div className="p-8 md:p-12 border-b border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-gradient-to-b dark:from-white/5 dark:via-[#0f0f0f] dark:to-[#0a0a0a]">
             <div className="flex flex-wrap items-center gap-3 mb-6"><span className="px-3 py-1 bg-moto-accent text-white text-xs font-bold uppercase rounded">{selectedTopic.category}</span></div>
-            <h1 className="text-3xl md:text-5xl font-display font-bold text-white mb-8">{selectedTopic.title}</h1>
+            <h1 className="text-3xl md:text-5xl font-display font-bold text-gray-900 dark:text-white mb-8">{selectedTopic.title}</h1>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-               <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg border border-white/10 ${selectedTopic.authorId.includes('admin') ? 'bg-gradient-to-br from-moto-accent to-red-900' : 'bg-gray-700'}`}>{selectedTopic.authorName.charAt(0)}</div>
+               <div 
+                className="flex items-center gap-4 cursor-pointer group"
+                onClick={() => { if(onViewProfile) onViewProfile(selectedTopic.authorId); }}
+               >
+                  <div className="rounded-xl shadow-lg border border-white/10 overflow-hidden group-hover:scale-105 transition-transform">
+                      <UserAvatar name={selectedTopic.authorName} size={48} />
+                  </div>
                   <div>
-                      <div className="flex items-center gap-2"><span className={`font-bold ${selectedTopic.authorId.includes('admin') ? 'text-moto-accent' : 'text-white'}`}>{selectedTopic.authorName}</span>{selectedTopic.authorId.includes('admin') && <span className="text-[10px] bg-moto-accent/20 text-moto-accent px-1.5 py-0.5 rounded uppercase font-bold">Admin</span>}</div>
+                      <div className="flex items-center gap-2"><span className={`font-bold group-hover:underline ${selectedTopic.authorId.includes('admin') ? 'text-moto-accent' : 'text-gray-900 dark:text-white'}`}>{selectedTopic.authorName}</span>{selectedTopic.authorId.includes('admin') && <span className="text-[10px] bg-moto-accent/20 text-moto-accent px-1.5 py-0.5 rounded uppercase font-bold">Admin</span>}</div>
                       <div className="text-xs text-gray-500 mt-1">{selectedTopic.date}</div>
                   </div>
                </div>
@@ -241,21 +254,33 @@ export const Forum: React.FC<ForumProps> = ({ user, onOpenAuth }) => {
                </div>
             </div>
           </div>
-          <div className="p-8 md:p-12 text-gray-300 leading-loose text-lg min-h-[200px] font-light border-b border-white/5 whitespace-pre-wrap">{selectedTopic.content}</div>
+          <div className="p-8 md:p-12 text-gray-700 dark:text-gray-300 leading-loose text-lg min-h-[200px] font-light border-b border-gray-200 dark:border-white/5 whitespace-pre-wrap">{selectedTopic.content}</div>
           
           {/* Comments */}
-          <div className="p-8 bg-[#050505]">
-             <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-3"><MessageSquare className="w-5 h-5 text-moto-accent"/> Yorumlar ({selectedTopic.comments.length})</h3>
+          <div className="p-8 bg-gray-50 dark:bg-[#050505]">
+             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3"><MessageSquare className="w-5 h-5 text-moto-accent"/> Yorumlar ({selectedTopic.comments.length})</h3>
              <div className="space-y-8 mb-12">
                 {selectedTopic.comments.map((comment) => (
                   <div key={comment.id} className="flex gap-4 md:gap-6">
-                     <div className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center text-white font-bold mt-1 border border-white/10 ${comment.authorId.includes('admin') ? 'bg-moto-accent' : 'bg-gray-800'}`}>{comment.authorName.charAt(0)}</div>
-                     <div className="flex-1 bg-[#0f0f0f] border border-white/10 p-6 rounded-2xl rounded-tl-none relative shadow-lg">
-                        <div className="flex justify-between items-center mb-3 border-b border-white/5 pb-3">
-                           <div className="flex items-center gap-2"><span className={`font-bold text-sm ${comment.authorId.includes('admin') ? 'text-moto-accent' : 'text-white'}`}>{comment.authorName}</span></div>
-                           <span className="text-[10px] text-gray-600 font-mono">{comment.date}</span>
+                     <div 
+                        className="flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                        onClick={() => { if(onViewProfile) onViewProfile(comment.authorId); }}
+                     >
+                         <UserAvatar name={comment.authorName} size={40} />
+                     </div>
+                     <div className="flex-1 bg-white dark:bg-[#0f0f0f] border border-gray-200 dark:border-white/10 p-6 rounded-2xl rounded-tl-none relative shadow-sm">
+                        <div className="flex justify-between items-center mb-3 border-b border-gray-100 dark:border-white/5 pb-3">
+                           <div className="flex items-center gap-2">
+                               <span 
+                                className={`font-bold text-sm cursor-pointer hover:underline ${comment.authorId.includes('admin') ? 'text-moto-accent' : 'text-gray-900 dark:text-white'}`}
+                                onClick={() => { if(onViewProfile) onViewProfile(comment.authorId); }}
+                               >
+                                   {comment.authorName}
+                               </span>
+                           </div>
+                           <span className="text-[10px] text-gray-500 font-mono">{comment.date}</span>
                         </div>
-                        <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                        <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
                      </div>
                   </div>
                 ))}
@@ -263,16 +288,18 @@ export const Forum: React.FC<ForumProps> = ({ user, onOpenAuth }) => {
              {/* Comment Form */}
              {user ? (
                <div className="sticky bottom-6 z-30">
-                   <div className="relative flex gap-4 items-start bg-[#111] border border-white/15 p-4 md:p-6 rounded-2xl shadow-2xl ring-1 ring-white/5">
-                      <div className="w-10 h-10 rounded-lg bg-gray-800 flex-shrink-0 flex items-center justify-center text-white font-bold border border-white/10">{user.name.charAt(0)}</div>
+                   <div className="relative flex gap-4 items-start bg-white dark:bg-[#111] border border-gray-200 dark:border-white/15 p-4 md:p-6 rounded-2xl shadow-xl ring-1 ring-black/5 dark:ring-white/5">
+                      <div className="flex-shrink-0">
+                          <UserAvatar name={user.name} size={40} />
+                      </div>
                       <div className="flex-1 relative">
-                         <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Bu konuya katkıda bulun..." className="w-full bg-black border border-white/10 rounded-xl p-4 pr-16 text-white focus:outline-none focus:border-moto-accent min-h-[60px] resize-none" />
+                         <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Bu konuya katkıda bulun..." className="w-full bg-gray-50 dark:bg-black border border-gray-200 dark:border-white/10 rounded-xl p-4 pr-16 text-gray-900 dark:text-white focus:outline-none focus:border-moto-accent min-h-[60px] resize-none" />
                          <button onClick={handleAddComment} disabled={!commentText.trim()} className="absolute bottom-3 right-3 p-2 bg-moto-accent text-white rounded-lg hover:bg-red-600 disabled:opacity-50 transition-all"><Send className="w-4 h-4" /></button>
                       </div>
                    </div>
                </div>
              ) : (
-               <div className="bg-gradient-to-r from-[#0f0f0f] to-black border border-white/10 p-8 rounded-2xl text-center"><Lock className="w-8 h-8 text-gray-500 mx-auto mb-4" /><h4 className="text-white font-bold mb-2">Tartışmaya Katıl</h4><p className="text-gray-400 text-sm mb-6">Yorum yapmak için giriş yapmalısın.</p><Button variant="outline" onClick={onOpenAuth}>GİRİŞ YAP</Button></div>
+               <div className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-[#0f0f0f] dark:to-black border border-gray-200 dark:border-white/10 p-8 rounded-2xl text-center"><Lock className="w-8 h-8 text-gray-500 mx-auto mb-4" /><h4 className="text-gray-900 dark:text-white font-bold mb-2">Tartışmaya Katıl</h4><p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Yorum yapmak için giriş yapmalısın.</p><Button variant="outline" onClick={onOpenAuth} className="border-gray-300 dark:border-white/20 text-gray-700 dark:text-white">GİRİŞ YAP</Button></div>
              )}
           </div>
         </div>

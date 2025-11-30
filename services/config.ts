@@ -1,3 +1,4 @@
+
 // Bu dosya uygulamanın nerede çalıştığını (Local vs Canlı) otomatik algılar.
 
 const getEnv = () => {
@@ -11,11 +12,19 @@ const getEnv = () => {
 
 const env = getEnv();
 
-// ÖNEMLİ: Verilerin kalıcı olması için Backend'i zorunlu kılıyoruz.
-// Lütfen backend klasöründe 'node server.js' komutunu çalıştırın.
-const USE_MOCK = false; 
+// LocalStorage'dan ayarı oku, yoksa varsayılan olarak TRUE (Mock) yap.
+const getMockSetting = () => {
+    const stored = localStorage.getItem('mv_use_mock_api');
+    return stored !== null ? JSON.parse(stored) : true;
+};
 
 export const CONFIG = {
-    USE_MOCK_API: USE_MOCK, 
-    API_URL: env.VITE_API_URL || 'http://localhost:5000/api'
+    USE_MOCK_API: getMockSetting(), 
+    API_URL: env.VITE_API_URL || 'http://localhost:5000/api',
+    
+    // Modu değiştir ve sayfayı yenile
+    toggleApiMode: (useMock: boolean) => {
+        localStorage.setItem('mv_use_mock_api', JSON.stringify(useMock));
+        window.location.reload();
+    }
 };

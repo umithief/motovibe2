@@ -1,9 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
 import { PRODUCTS } from "../constants";
 
-// Initialize the client
-// API key must be obtained exclusively from process.env.API_KEY
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Client instance holder
+let ai: GoogleGenAI | null = null;
+
+// Initialize the client lazily to prevent startup crashes if environment is not ready
+const getAiClient = () => {
+  if (!ai) {
+    // API key must be obtained exclusively from process.env.API_KEY
+    if (!process.env.API_KEY) {
+      console.error("API Key is missing!");
+      throw new Error("API Key eksik");
+    }
+    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  }
+  return ai;
+};
 
 const SYSTEM_INSTRUCTION = `
 Sen MotoVibe adında bir motosiklet aksesuar mağazasının uzman yapay zeka satış danışmanısın.
@@ -29,7 +41,8 @@ export const sendMessageToGemini = async (message: string, history: { role: 'use
   }
 
   try {
-    const chat = ai.chats.create({
+    const client = getAiClient();
+    const chat = client.chats.create({
       model: 'gemini-2.5-flash',
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -42,9 +55,17 @@ export const sendMessageToGemini = async (message: string, history: { role: 'use
     });
 
     const result = await chat.sendMessage({ message });
-    return result.text;
-  } catch (error) {
+    return result.text || "Yanıt alınamadı.";
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
+    
+    // Check for specific RPC/Network errors
+    // Error code 6 or "Rpc failed" usually indicates a network or proxy issue on the client side
+    // or an invalid API key configuration causing the backend to reject the connection abruptly.
+    if (error.message && (error.message.includes("Rpc failed") || error.message.includes("xhr error"))) {
+        return "Bağlantı hatası oluştu. Lütfen internet bağlantınızı kontrol edin veya daha sonra tekrar deneyin (Error: Network/RPC).";
+    }
+    
     return "Üzgünüm, şu an bağlantımda bir sorun var. Birazdan tekrar dener misin dostum?";
   }
 };

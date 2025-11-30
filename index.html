@@ -1,51 +1,266 @@
+
+<script type="importmap">
+{
+  "imports": {
+    "dotenv": "https://aistudiocdn.com/dotenv@^17.2.3",
+    "multer": "https://aistudiocdn.com/multer@^2.0.2",
+    "lenis": "https://aistudiocdn.com/lenis@^1.3.15",
+    "cors": "https://aistudiocdn.com/cors@^2.8.5",
+    "mongoose": "https://aistudiocdn.com/mongoose@^9.0.0",
+    "express": "https://aistudiocdn.com/express@^5.1.0",
+    "minio": "https://aistudiocdn.com/minio@^8.0.6",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.24",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "clsx": "https://aistudiocdn.com/clsx@^2.1.1",
+    "tailwind-merge": "https://aistudiocdn.com/tailwind-merge@^3.4.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "rrweb": "https://aistudiocdn.com/rrweb@^2.0.0-alpha.4",
+    "boring-avatars": "https://aistudiocdn.com/boring-avatars@^2.0.4",
+    "react-fast-marquee": "https://aistudiocdn.com/react-fast-marquee@^1.6.5",
+    "notyf": "https://cdn.jsdelivr.net/npm/notyf@3/notyf.es.js",
+    "react-simple-star-rating": "https://esm.sh/react-simple-star-rating@5.1.1?external=react,react-dom",
+    "react-card-flip": "https://esm.sh/react-card-flip@1.2.3?external=react,react-dom",
+    "filepond": "https://esm.sh/filepond@4.30.6",
+    "filepond-plugin-image-preview": "https://esm.sh/filepond-plugin-image-preview@4.6.11?external=filepond",
+    "filepond-plugin-file-validate-type": "https://esm.sh/filepond-plugin-file-validate-type@1.2.9?external=filepond",
+    "filepond-plugin-image-crop": "https://esm.sh/filepond-plugin-image-crop@2.0.6?external=filepond",
+    "filepond-plugin-image-resize": "https://esm.sh/filepond-plugin-image-resize@2.0.10?external=filepond",
+    "filepond-plugin-image-transform": "https://esm.sh/filepond-plugin-image-transform@3.8.7?external=filepond",
+    "react-filepond": "https://esm.sh/react-filepond@7.1.2?external=react,react-dom,filepond",
+    "msw": "https://esm.sh/msw@2.2.1",
+    "msw/browser": "https://esm.sh/msw@2.2.1/browser",
+    "msw/": "https://aistudiocdn.com/msw@^2.12.3/",
+    "whatamesh": "https://esm.sh/whatamesh"
+  }
+}
+</script>
 <!DOCTYPE html>
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MotoVibe | Cyber-Luxe Moto Store</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#09090b" />
+    <title>MotoVibe | Özgür Sürüş Deneyimi</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js" crossorigin=""></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/rrweb-player@latest/dist/style.css" />
+    <script src="https://w.soundcloud.com/player/api.js"></script>
+    
+    <!-- Glightbox -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css" />
+    <script src="https://cdn.jsdelivr.net/gh/mcstudios/glightbox/dist/js/glightbox.min.js"></script>
+
+    <!-- Notyf CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+
+    <!-- FilePond CSS -->
+    <link href="https://unpkg.com/filepond@^4/dist/filepond.css" rel="stylesheet" />
+    <link href="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css" rel="stylesheet" />
+
+    <!-- Google Model Viewer -->
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    
+    <!-- Polyfill for process -->
+    <script>
+      // Safer polyfill that doesn't overwrite if already exists (e.g. injected by bundler)
+      window.process = window.process || {};
+      window.process.env = window.process.env || {};
+      window.process.env.NODE_ENV = window.process.env.NODE_ENV || 'development';
+      window.process.env.API_KEY = window.process.env.API_KEY || ''; 
+    </script>
+
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
+          container: {
+            center: true,
+            padding: "1.5rem",
+            screens: {
+              "2xl": "1400px",
+            },
+          },
           extend: {
             colors: {
-              'moto-dark': '#050505', // Ultra Dark
-              'moto-card': '#121212',
-              'moto-accent': '#ff1f1f', // Neon Red
-              'moto-gray': '#27272a',
+              // Modern Palette based on Zinc (Cool Gray)
+              background: '#09090B', // Zinc 950 - Deepest Black
+              surface: '#18181B',    // Zinc 900 - Card Background
+              'surface-hover': '#27272A', // Zinc 800
+              border: '#27272A',     // Zinc 800
+              
+              // Legacy Mappings (Updated to new palette)
+              'moto-dark': '#09090B', 
+              'moto-card': '#18181B', 
+              
+              // Brand Colors (Dynamic)
+              'moto-accent': 'var(--moto-accent)', 
+              'moto-accent-hover': 'var(--moto-accent-hover)',
+              
+              // Text
+              'text-main': '#FFFFFF',
+              'text-muted': '#A1A1AA', // Zinc 400
             },
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
-              display: ['Oswald', 'sans-serif'],
+              display: ['Inter', 'sans-serif'],
+              mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
             },
-            backgroundImage: {
-              'cyber-grid': "url('https://grainy-gradients.vercel.app/noise.svg')",
-              'glow-conic': 'conic-gradient(from 180deg at 50% 50%, #2a8af6 0deg, #a853ba 180deg, #e92a67 360deg)',
-            }
+            animation: {
+              'spin-slow': 'spin 3s linear infinite',
+              'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'shine': 'shine 3s infinite linear',
+            },
           },
         },
       }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Oswald:wght@400;500;700&display=swap" rel="stylesheet">
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "express": "https://aistudiocdn.com/express@^5.1.0",
-    "mongoose": "https://aistudiocdn.com/mongoose@^8.20.0",
-    "cors": "https://aistudiocdn.com/cors@^2.8.5",
-    "dotenv": "https://aistudiocdn.com/dotenv@^17.2.3"
-  }
-}
-</script>
-</head>
-  <body class="bg-moto-dark text-white antialiased selection:bg-moto-accent selection:text-white">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+      /* --- GLOBAL SCROLLBAR & SELECTION --- */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #09090B; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #3f3f46; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #52525b; 
+      }
+      
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: #3f3f46 #09090B;
+      }
+
+      ::selection {
+        background: var(--moto-accent);
+        color: black;
+        text-shadow: none;
+      }
+
+      /* --- DYNAMIC THEMES --- */
+      :root {
+        --moto-accent: #F2A619;
+        --moto-accent-hover: #d98e04;
+        --moto-accent-rgb: 242, 166, 25;
+      }
+
+      [data-theme='orange'] { --moto-accent: #F2A619; --moto-accent-hover: #d98e04; --moto-accent-rgb: 242, 166, 25; }
+      [data-theme='red']    { --moto-accent: #EF4444; --moto-accent-hover: #DC2626; --moto-accent-rgb: 239, 68, 68; }
+      [data-theme='blue']   { --moto-accent: #3B82F6; --moto-accent-hover: #2563EB; --moto-accent-rgb: 59, 130, 246; }
+      [data-theme='green']  { --moto-accent: #22C55E; --moto-accent-hover: #16A34A; --moto-accent-rgb: 34, 197, 94; }
+      [data-theme='purple'] { --moto-accent: #A855F7; --moto-accent-hover: #9333EA; --moto-accent-rgb: 168, 85, 247; }
+      [data-theme='cyan']   { --moto-accent: #06B6D4; --moto-accent-hover: #0891B2; --moto-accent-rgb: 6, 182, 212; }
+      [data-theme='yellow'] { --moto-accent: #EAB308; --moto-accent-hover: #CA8A04; --moto-accent-rgb: 234, 179, 8; }
+
+      /* --- UTILITIES --- */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      /* --- NOTYF CUSTOMIZATIONS --- */
+      .notyf__toast {
+        border-radius: 8px !important;
+        font-family: 'Inter', sans-serif !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        font-weight: 500;
+      }
+      
+      .notyf-success {
+        background: #10B981 !important;
+      }
+      
+      .notyf-error {
+        background: #EF4444 !important; 
+      }
+      
+      .notyf-info {
+        background: #3B82F6 !important; 
+      }
+
+      .notyf__message {
+        color: white !important;
+      }
+
+      /* --- LEAFLET DARK MODE FIXES --- */
+      .leaflet-container {
+        background: #09090B !important;
+        font-family: 'Inter', sans-serif !important;
+      }
+      .leaflet-routing-container {
+        background-color: #18181B !important;
+        color: white !important;
+        border: 1px solid #27272A !important;
+        box-shadow: none !important;
+      }
+      .leaflet-bar a {
+        background-color: #18181B !important;
+        border-bottom: 1px solid #27272A !important;
+        color: white !important;
+      }
+      .leaflet-bar a:hover {
+        background-color: #27272A !important;
+      }
+
+      /* --- ANIMATIONS --- */
+      @keyframes shine {
+        0% { transform: translateX(-150%) skewX(-20deg); }
+        100% { transform: translateX(250%) skewX(-20deg); }
+      }
+
+      /* --- FILEPOND DARK MODE --- */
+      .filepond--root {
+        font-family: 'Inter', sans-serif;
+      }
+      .filepond--panel-root {
+        background-color: #1A1A17 !important;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 0.75rem !important;
+      }
+      .filepond--drop-label {
+        color: #9CA3AF !important;
+      }
+      .filepond--label-action {
+        text-decoration-color: #F2A619 !important;
+        color: #F2A619 !important;
+        font-weight: bold;
+      }
+      .filepond--item-panel {
+        background-color: #27272A !important;
+      }
+      .filepond--file-action-button {
+        background-color: #09090B !important;
+        color: white !important;
+      }
+    </style>
+  </head>
+  <!-- UPDATED BODY CLASS FOR LIGHT/DARK TEXT ADAPTATION -->
+  <body class="bg-gray-50 text-gray-900 dark:bg-[#09090B] dark:text-white overflow-x-hidden antialiased selection:bg-moto-accent selection:text-black">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="index.tsx"></script>
   </body>
 </html>

@@ -67,12 +67,12 @@ export const SupportChatWidget: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end">
+    <div className="fixed bottom-6 right-20 md:right-6 z-[50] flex flex-col items-end transition-all duration-300">
       {/* Chat Window */}
       {isOpen && (
-        <div className="mb-4 w-[350px] h-[500px] bg-[#0a0a0a] border border-moto-accent/30 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 duration-300 backdrop-blur-xl">
+        <div className="mb-4 w-[calc(100vw-2rem)] md:w-[350px] h-[60vh] md:h-[500px] bg-[#0a0a0a] border border-moto-accent/30 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 duration-300 backdrop-blur-xl">
           {/* Header */}
-          <div className="p-4 bg-moto-accent text-white flex justify-between items-center shadow-lg">
+          <div className="p-4 bg-moto-accent text-white flex justify-between items-center shadow-lg flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
                 <Bot className="w-5 h-5" />
@@ -130,7 +130,7 @@ export const SupportChatWidget: React.FC = () => {
           </div>
 
           {/* Input */}
-          <div className="p-3 bg-black border-t border-gray-800">
+          <div className="p-3 bg-black border-t border-gray-800 flex-shrink-0">
             <div className="relative">
               <input
                 type="text"
@@ -174,7 +174,7 @@ export const SupportChatWidget: React.FC = () => {
         
         {/* Tooltip */}
         {!isOpen && (
-            <div className={`absolute right-16 bg-white text-black px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all duration-300 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'}`}>
+            <div className={`hidden md:block absolute right-16 bg-white text-black px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all duration-300 ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'}`}>
                 Yardım mı lazım?
                 <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-white transform rotate-45"></div>
             </div>

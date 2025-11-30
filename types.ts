@@ -1,3 +1,5 @@
+
+
 export enum ProductCategory {
   HELMET = 'Kask',
   JACKET = 'Mont',
@@ -9,6 +11,14 @@ export enum ProductCategory {
   ACCESSORY = 'Aksesuar'
 }
 
+declare global {
+    interface Window {
+        GLightbox: any;
+    }
+}
+
+export type ViewState = 'home' | 'shop' | 'routes' | 'blog' | 'forum' | 'favorites' | 'profile' | 'public-profile' | 'cart' | 'checkout' | 'auth' | 'admin' | 'product-detail' | 'ride-mode' | 'mototool' | 'about' | 'ai-assistant' | 'meetup';
+
 export interface CategoryItem {
     id: string;
     name: string;
@@ -17,6 +27,22 @@ export interface CategoryItem {
     desc: string;
     count: string;
     className?: string; // Grid yerleşimi için (col-span-2 vb.)
+}
+
+export interface Story {
+    id: string;
+    label: string;
+    image: string;
+    color: string; // border color class or hex
+    link?: string;
+}
+
+export interface Model3DItem {
+    id: string;
+    name: string;
+    url: string; // .glb file url
+    poster: string; // preview image
+    category?: string;
 }
 
 export interface Product {
@@ -30,6 +56,8 @@ export interface Product {
   rating: number;
   features: string[];
   stock: number; 
+  isNegotiable?: boolean;
+  model3d?: string; // 3D Model URL (.glb)
 }
 
 export interface CartItem extends Product {
@@ -43,6 +71,16 @@ export interface ChatMessage {
   isError?: boolean;
 }
 
+export interface UserBike {
+  id: number;
+  brand: string;
+  model: string;
+  year: string;
+  km: string;
+  color: string;
+  image: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -52,6 +90,12 @@ export interface User {
   address?: string;
   joinDate: string;
   isAdmin?: boolean; // Admin yetkisi
+  points: number;
+  rank: 'Scooter Çırağı' | 'Viraj Ustası' | 'Yol Kaptanı';
+  garage?: UserBike[];
+  bio?: string;
+  followers?: number;
+  following?: number;
 }
 
 export interface OrderItem {
@@ -97,10 +141,12 @@ export interface ForumTopic {
 export interface Slide {
   id: number;
   image: string;
+  videoUrl?: string; // Optional video URL
+  type?: 'image' | 'video'; // Type of slide
   title: string;
   subtitle: string;
   cta: string;
-  action: ViewState;
+  action: string;
 }
 
 export interface ActivityLog {
@@ -129,6 +175,17 @@ export interface AnalyticsEvent {
   date: string;
 }
 
+export interface SessionRecording {
+    id: string;
+    userId: string; // 'guest' or User ID
+    userName: string;
+    startTime: number;
+    endTime?: number;
+    duration: string;
+    events: any[]; // rrweb events
+    device: string;
+}
+
 export type TimeRange = '24h' | '7d' | '30d';
 
 export interface AnalyticsDashboardData {
@@ -142,5 +199,93 @@ export interface AnalyticsDashboardData {
   activityTimeline: { label: string; value: number }[]; 
 }
 
-export type ViewState = 'home' | 'shop' | 'favorites' | 'product_detail' | 'cart' | 'ai_assistant' | 'profile' | 'about' | 'forum' | 'admin_panel' | 'ride_mode';
+export interface Route {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  difficulty: 'Kolay' | 'Orta' | 'Zor' | 'Extreme';
+  distance: string;
+  duration: string;
+  location: string;
+  bestSeason: string;
+  tags: string[];
+  coordinates?: { lat: number; lng: number }; // Başlangıç noktası veya merkez
+  path?: { lat: number; lng: number }[]; // Rota çizimi için koordinat dizisi
+  authorId?: string;
+  authorName?: string;
+}
+
+export interface MusicTrack {
+  id: string;
+  title: string;
+  artist: string;
+  url: string; // Direct Audio URL
+  addedAt: string;
+}
+
+export interface BlogPost {
+  id: number;
+  title: string;
+  excerpt: string;
+  content?: string;
+  image: string;
+  date: string;
+  author: {
+    name: string;
+    avatar: string;
+  };
+  category: 'inceleme' | 'teknik' | 'gezi' | 'yasam';
+  readTime: string;
+  likes: number;
+  comments: number;
+}
+
+export interface MeetupMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  text: string;
+  time: string;
+}
+
+export interface MeetupEvent {
+  id: string;
+  title: string;
+  type: 'night-ride' | 'coffee' | 'track-day' | 'offroad';
+  date: string;
+  time: string;
+  location: string;
+  coordinates: { lat: number; lng: number };
+  organizer: string;
+  attendees: number;
+  attendeeList?: { id: string; name: string; avatar?: string }[];
+  messages?: MeetupMessage[]; // Sohbet Geçmişi
+  image: string;
+  description: string;
+}
+
 export type AuthMode = 'login' | 'register';
+
+export type NegotiationStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface NegotiationResult {
+    status: NegotiationStatus;
+    price?: number;
+    message: string;
+}
+
+export interface NegotiationOffer {
+    id: string;
+    productId: number;
+    productName: string;
+    productImage: string;
+    originalPrice: number;
+    offerPrice: number;
+    userId: string;
+    userName: string;
+    status: NegotiationStatus;
+    date: string;
+}
+
+export type ColorTheme = 'orange' | 'red' | 'blue' | 'green' | 'purple' | 'cyan' | 'yellow';

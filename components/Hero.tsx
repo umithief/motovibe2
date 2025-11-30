@@ -1,185 +1,312 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowRight, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
-import { Button } from './Button';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronRight, ChevronLeft, ArrowRight, Volume2, VolumeX, Play } from 'lucide-react';
 import { ViewState, Slide } from '../types';
-import { sliderService } from '../services/sliderService';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { DEFAULT_SLIDES } from '../constants';
+import { sliderService } from '../services/sliderService';
 
 interface HeroProps {
   onNavigate: (view: ViewState) => void;
 }
 
+// Helper: Extract YouTube ID (Duplicated to avoid import issues from other components if not exported)
+const getYouTubeID = (url: string) => {
+    if (!url) return false;
+    const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[7] && match[7].length === 11) ? match[7] : false;
+};
+
+// React-Video-Cover Equivalent Implementation
+const VideoCover = ({ src, poster, isMuted }: { src: string, poster: string, isMuted: boolean }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.defaultMuted = true;
+            videoRef.current.muted = isMuted;
+            
+            // Force load to help with buffering
+            videoRef.current.load();
+
+            const playPromise = videoRef.current.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.warn("Auto-play was prevented. Interaction required.", error);
+                });
+            }
+        }
+    }, [src, isMuted]);
+
+    return (
+        <div className="absolute inset-0 w-full h-full overflow-hidden bg-black">
+            <video
+                ref={videoRef}
+                className="w-full h-full object-cover opacity-90 will-change-transform"
+                src={src}
+                poster={poster}
+                autoPlay
+                loop
+                muted // Explicit attribute
+                playsInline
+                preload="auto" // Aggressive buffering for smoother playback
+                disablePictureInPicture
+                onContextMenu={(e) => e.preventDefault()}
+            />
+            <div className="absolute inset-0 bg-black/20"></div>
+        </div>
+    );
+};
+
 export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
   const [slides, setSlides] = useState<Slide[]>(DEFAULT_SLIDES);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isAutoPlay, setIsAutoPlay] = useState(true);
+  const [direction, setDirection] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
+  const autoPlayRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  const slideLength = slides.length;
+  // Increase duration for video slides to let users watch a bit
+  const autoPlayTime = slides[currentSlide]?.type === 'video' ? 12000 : 6000; 
 
   useEffect(() => {
-    const loadSlides = async () => {
-        try {
-            const data = await sliderService.getSlides();
-            if (data && data.length > 0) {
-                setSlides(data);
-            }
-        } catch (error) {
-            console.error("Slider error", error);
-        }
-    };
-    loadSlides();
+      const loadSlides = async () => {
+          try {
+              // Force refresh logic handles inside service
+              const fetchedSlides = await sliderService.getSlides();
+              if (fetchedSlides && fetchedSlides.length > 0) {
+                  setSlides(fetchedSlides);
+              }
+          } catch (error) {
+              console.error("Slider loading failed", error);
+          }
+      };
+      loadSlides();
   }, []);
 
-  const nextSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
-  }, [slides.length]);
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
-    setIsAutoPlay(false);
+  const startAutoPlay = () => {
+      stopAutoPlay();
+      autoPlayRef.current = setInterval(() => {
+          nextSlide();
+      }, autoPlayTime);
   };
 
-  const handleNextClick = () => {
-    nextSlide();
-    setIsAutoPlay(false);
+  const stopAutoPlay = () => {
+      if (autoPlayRef.current) clearInterval(autoPlayRef.current);
   };
 
   useEffect(() => {
-    if (!isAutoPlay) return;
-    const interval = setInterval(nextSlide, 6000);
-    return () => clearInterval(interval);
-  }, [nextSlide, isAutoPlay]);
+    startAutoPlay();
+    return () => stopAutoPlay();
+  }, [currentSlide, slideLength, autoPlayTime]);
+
+  const nextSlide = () => {
+    setDirection(1);
+    setCurrentSlide((prev) => (prev + 1) % slideLength);
+  };
+
+  const prevSlide = () => {
+    setDirection(-1);
+    setCurrentSlide((prev) => (prev - 1 + slideLength) % slideLength);
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setIsMuted(!isMuted);
+  };
+
+  const slideVariants: Variants = {
+      enter: (direction: number) => ({
+          x: direction > 0 ? '100%' : '-100%',
+          opacity: 0,
+          scale: 1.1 // Parallax feel
+      }),
+      center: {
+          x: 0,
+          opacity: 1,
+          scale: 1,
+          transition: {
+              x: { type: "spring", stiffness: 300, damping: 30 },
+              opacity: { duration: 0.4 },
+              scale: { duration: 6, ease: "linear" } // Ken Burns effect
+          }
+      },
+      exit: (direction: number) => ({
+          x: direction < 0 ? '100%' : '-100%',
+          opacity: 0,
+          transition: {
+              x: { type: "spring", stiffness: 300, damping: 30 },
+              opacity: { duration: 0.4 }
+          }
+      })
+  };
 
   return (
-    <div className="relative h-[90vh] md:h-screen w-full overflow-hidden bg-black group">
-      
-      {/* Cyber Grid Overlay */}
-      <div className="absolute inset-0 z-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
-      <div className="absolute inset-0 z-10 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100px_100px] pointer-events-none"></div>
-
-      {/* Slides */}
-      {slides.map((slide, index) => (
-        <div
-          key={slide.id}
-          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
-            index === currentSlide ? 'opacity-100 z-0' : 'opacity-0 z-[-1]'
-          }`}
+    <section 
+        className="relative w-full h-[600px] md:h-[750px] overflow-hidden bg-[#050505] group"
+        onMouseEnter={stopAutoPlay}
+        onMouseLeave={startAutoPlay}
+    >
+      <AnimatePresence initial={false} custom={direction} mode='popLayout'>
+        <motion.div
+          key={currentSlide}
+          custom={direction}
+          variants={slideVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          className="absolute inset-0 w-full h-full"
         >
-          {/* Background Image with Ken Burns Effect */}
-          <div className="absolute inset-0 overflow-hidden">
-            <img 
-              src={slide.image} 
-              alt={slide.title}
-              className={`w-full h-full object-cover object-center transition-transform duration-[10000ms] ease-linear ${
-                  index === currentSlide ? 'scale-110' : 'scale-100'
-              }`} 
-            />
-            {/* Advanced Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-[#050505]/90 via-transparent to-transparent"></div>
-            <div className="absolute inset-0 bg-black/20"></div>
-          </div>
-
-          {/* Content Container */}
-          <div className="relative z-20 max-w-7xl mx-auto px-6 h-full flex items-center">
-            <div className="max-w-4xl relative">
-              
-              {/* Ghost Typography (Background Text) */}
-              <div className={`absolute -top-20 -left-10 md:-left-20 text-[120px] md:text-[200px] font-display font-bold text-transparent opacity-10 pointer-events-none select-none leading-none tracking-tighter transform transition-all duration-1000 delay-100 ${
-                  index === currentSlide ? 'translate-x-0 opacity-10' : '-translate-x-20 opacity-0'
-              }`}
-              style={{ WebkitTextStroke: '2px rgba(255,255,255,0.5)' }}>
-                {slide.title.split(' ')[0]}
-              </div>
-
-              {/* Main Content */}
-              <div className="relative">
-                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-6 transform transition-all duration-700 delay-300 ${index === currentSlide ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-                    <span className="w-2 h-2 rounded-full bg-moto-accent animate-pulse"></span>
-                    <span className="text-moto-accent font-bold tracking-[0.2em] text-xs">MOTOVIBE COLLECTION</span>
-                  </div>
-                  
-                  <h1 className={`text-5xl md:text-7xl lg:text-8xl font-display font-bold text-white tracking-tighter leading-[0.9] mb-6 transform transition-all duration-1000 delay-100 ${
-                    index === currentSlide ? 'translate-x-0 opacity-100 blur-0' : '-translate-x-10 opacity-0 blur-sm'
-                  }`}>
-                    {slide.title}
-                    <span className="text-moto-accent">.</span>
-                  </h1>
-
-                  <div className={`max-w-xl p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md transform transition-all duration-1000 delay-500 ${
-                     index === currentSlide ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-                  }`}>
-                    <p className="text-gray-300 text-lg font-light leading-relaxed border-l-2 border-moto-accent pl-4">
-                        {slide.subtitle}
-                    </p>
-                  </div>
-
-                  <div className={`mt-8 flex items-center gap-4 transform transition-all duration-1000 delay-700 ${
-                     index === currentSlide ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-                  }`}>
-                    <Button variant="primary" size="lg" onClick={() => onNavigate(slide.action)} className="shadow-[0_0_30px_rgba(255,31,31,0.4)]">
-                      {slide.cta} <ArrowRight className="ml-2 w-5 h-5" />
-                    </Button>
-                    
-                    <button onClick={() => onNavigate('about')} className="hidden sm:flex items-center justify-center w-14 h-14 rounded-full border border-white/20 hover:bg-white/10 hover:border-white text-white transition-all">
-                         <Zap className="w-6 h-6" />
-                    </button>
-                  </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-
-      {/* Navigation Buttons (Visible on Hover) */}
-      <div className="absolute inset-y-0 left-0 z-30 flex items-center px-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-         <button 
-            onClick={prevSlide}
-            className="w-12 h-12 rounded-full bg-black/50 border border-white/10 text-white backdrop-blur-sm flex items-center justify-center hover:bg-moto-accent hover:border-moto-accent hover:scale-110 transition-all"
-         >
-            <ChevronLeft className="w-6 h-6" />
-         </button>
-      </div>
-      <div className="absolute inset-y-0 right-0 z-30 flex items-center px-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-         <button 
-            onClick={handleNextClick}
-            className="w-12 h-12 rounded-full bg-black/50 border border-white/10 text-white backdrop-blur-sm flex items-center justify-center hover:bg-moto-accent hover:border-moto-accent hover:scale-110 transition-all"
-         >
-            <ChevronRight className="w-6 h-6" />
-         </button>
-      </div>
-
-      {/* Modern Progress Bar */}
-      <div className="absolute bottom-0 left-0 w-full z-30 border-t border-white/5 bg-black/40 backdrop-blur-md h-20 flex items-center">
-        <div className="max-w-7xl mx-auto px-6 w-full flex justify-between items-center">
+          {/* Background: Video Cover (YouTube/MP4) or Image */}
+          <div className="absolute inset-0">
+            {slides[currentSlide].type === 'video' && slides[currentSlide].videoUrl ? (
+                getYouTubeID(slides[currentSlide].videoUrl!) ? (
+                    <div className="absolute inset-0 w-full h-full bg-black overflow-hidden pointer-events-none">
+                        <iframe 
+                            className="w-full h-full scale-[1.35] opacity-80"
+                            src={`https://www.youtube.com/embed/${getYouTubeID(slides[currentSlide].videoUrl!)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${getYouTubeID(slides[currentSlide].videoUrl!)}&showinfo=0&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1`}
+                            allow="autoplay; encrypted-media"
+                            style={{ pointerEvents: 'none' }}
+                        ></iframe>
+                        <div className="absolute inset-0 bg-black/30"></div>
+                    </div>
+                ) : (
+                    <VideoCover 
+                        src={slides[currentSlide].videoUrl!} 
+                        poster={slides[currentSlide].image} 
+                        isMuted={isMuted} 
+                    />
+                )
+            ) : (
+                <motion.img 
+                    src={slides[currentSlide].image} 
+                    alt={slides[currentSlide].title} 
+                    className="w-full h-full object-cover"
+                />
+            )}
             
-            {/* Slide Indicators */}
-            <div className="flex gap-0.5 h-1 w-full max-w-md relative bg-gray-800 rounded-full overflow-hidden">
-                 {slides.map((_, index) => (
-                    <div 
-                        key={index} 
-                        className={`h-full flex-1 transition-all duration-500 ${index < currentSlide ? 'bg-white' : 'bg-transparent'}`}
-                    ></div>
-                 ))}
-                 <div 
-                    className="absolute top-0 h-full bg-moto-accent transition-all duration-500 ease-out"
-                    style={{ 
-                        left: `${(currentSlide / slides.length) * 100}%`, 
-                        width: `${100 / slides.length}%` 
-                    }}
-                 >
-                    {/* Animated Glow */}
-                    <div className="absolute inset-0 bg-white/50 animate-pulse"></div>
-                 </div>
-            </div>
+            {/* Cinematic Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+          </div>
 
-            {/* Counter */}
-            <div className="flex items-center gap-4 font-mono text-sm ml-8">
-                <span className="text-moto-accent font-bold text-xl">0{currentSlide + 1}</span>
-                <span className="h-px w-8 bg-gray-600"></span>
-                <span className="text-gray-500">0{slides.length}</span>
+          {/* Content */}
+          <div className="relative z-10 max-w-7xl mx-auto px-6 h-full flex flex-col justify-center">
+            <div className="max-w-2xl">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mb-4 flex items-center gap-2"
+              >
+                  {slides[currentSlide].type === 'video' ? (
+                      <span className="px-3 py-1 bg-red-600/90 text-white text-[10px] font-bold uppercase rounded-full flex items-center gap-2 animate-pulse">
+                          <Play className="w-3 h-3 fill-current" /> Live Action
+                      </span>
+                  ) : (
+                      <span className="px-3 py-1 bg-moto-accent text-black text-[10px] font-bold uppercase rounded-full">
+                          Yeni Sezon
+                      </span>
+                  )}
+              </motion.div>
+
+              <motion.h1 
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="text-5xl md:text-7xl font-display font-black text-white mb-6 leading-[0.9] tracking-tight drop-shadow-2xl"
+              >
+                  {slides[currentSlide].title.split(' ').map((word, i) => (
+                      <span key={i} className="block">{word}</span>
+                  ))}
+              </motion.h1>
+              
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 }} 
+                className="h-1 w-24 bg-moto-accent mb-6"
+              ></motion.div>
+              
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="text-lg text-gray-300 mb-8 max-w-lg font-medium leading-relaxed"
+              >
+                  {slides[currentSlide].subtitle}
+              </motion.p>
+              
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="flex flex-wrap gap-4"
+              >
+                  <button 
+                      onClick={() => onNavigate(slides[currentSlide].action as ViewState)}
+                      className="group relative px-8 py-4 bg-white text-black font-bold uppercase tracking-widest text-sm overflow-hidden"
+                  >
+                      <div className="absolute inset-0 w-full h-full bg-moto-accent transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out"></div>
+                      <span className="relative z-10 flex items-center gap-2 group-hover:text-white transition-colors">
+                          {slides[currentSlide].cta} <ArrowRight className="w-4 h-4" />
+                      </span>
+                  </button>
+                  
+                  {slides[currentSlide].type === 'video' && !getYouTubeID(slides[currentSlide].videoUrl!) && (
+                      <button 
+                          onClick={toggleMute}
+                          className="px-4 py-4 border border-white/20 text-white hover:bg-white/10 transition-colors"
+                      >
+                          {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                      </button>
+                  )}
+              </motion.div>
             </div>
-        </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Modern Controls */}
+      <div className="absolute bottom-10 right-10 z-20 flex gap-2">
+          <button 
+            onClick={prevSlide} 
+            className="w-12 h-12 flex items-center justify-center border border-white/20 text-white hover:bg-white hover:text-black transition-all"
+          >
+              <ChevronLeft className="w-6 h-6" />
+          </button>
+          <button 
+            onClick={nextSlide} 
+            className="w-12 h-12 flex items-center justify-center bg-moto-accent text-white hover:bg-white hover:text-black transition-all shadow-lg shadow-moto-accent/20"
+          >
+              <ChevronRight className="w-6 h-6" />
+          </button>
       </div>
       
-    </div>
+      {/* Progress Bar Indicators */}
+      <div className="absolute bottom-10 left-10 z-20 flex gap-4">
+          {slides.map((_, idx) => (
+              <div 
+                key={idx} 
+                onClick={() => setCurrentSlide(idx)}
+                className="group cursor-pointer flex flex-col gap-2"
+              >
+                  <span className={`text-[10px] font-bold transition-colors ${currentSlide === idx ? 'text-white' : 'text-white/40'}`}>
+                      0{idx + 1}
+                  </span>
+                  <div className="w-12 h-[2px] bg-white/20 overflow-hidden relative">
+                      {currentSlide === idx && (
+                          <motion.div 
+                              className="absolute inset-0 bg-moto-accent"
+                              initial={{ width: 0 }}
+                              animate={{ width: '100%' }}
+                              transition={{ duration: autoPlayTime / 1000, ease: 'linear' }}
+                          />
+                      )}
+                  </div>
+              </div>
+          ))}
+      </div>
+    </section>
   );
 };

@@ -1,6 +1,8 @@
+
 import { ForumTopic, ForumComment, User } from '../types';
 import { DB, getStorage, setStorage, delay } from './db';
 import { CONFIG } from './config';
+import { gamificationService, POINTS } from './gamificationService';
 
 // Mock data fallback
 const MOCK_TOPICS: ForumTopic[] = [
@@ -61,6 +63,9 @@ export const forumService = {
         const topics = getStorage<ForumTopic[]>(DB.FORUM_TOPICS, []);
         topics.unshift(newTopic);
         setStorage(DB.FORUM_TOPICS, topics);
+        
+        await gamificationService.addPoints(user.id, POINTS.CREATE_TOPIC, 'Forum Konusu');
+        
         return newTopic;
     } else {
         // REAL BACKEND
@@ -69,6 +74,7 @@ export const forumService = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newTopic)
         });
+        await gamificationService.addPoints(user.id, POINTS.CREATE_TOPIC, 'Forum Konusu');
         return await response.json();
     }
   },
@@ -90,6 +96,9 @@ export const forumService = {
         if (topicIndex === -1) throw new Error('Konu bulunamadı');
         topics[topicIndex].comments.push(newComment);
         setStorage(DB.FORUM_TOPICS, topics);
+        
+        await gamificationService.addPoints(user.id, POINTS.ADD_COMMENT, 'Yorum');
+
         return newComment;
     } else {
         // REAL BACKEND
@@ -98,6 +107,7 @@ export const forumService = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newComment)
         });
+        await gamificationService.addPoints(user.id, POINTS.ADD_COMMENT, 'Yorum');
         return await response.json();
     }
   },

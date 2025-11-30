@@ -1,286 +1,359 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingCart, Menu, Zap, Search, Sparkles, X, User as UserIcon, LogOut, Heart, Navigation } from 'lucide-react';
-import { ViewState, User } from '../types';
+
+import React, { useState, useEffect } from 'react';
+import { Search, ShoppingBag, Palette, ChevronDown, User as UserIcon, Check, Zap, Navigation } from 'lucide-react';
+import { ViewState, User, ColorTheme, ProductCategory } from '../types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { UserAvatar } from './UserAvatar';
 
 interface NavbarProps {
   cartCount: number;
   favoritesCount: number;
   onCartClick: () => void;
   onFavoritesClick: () => void;
-  onNavigate: (view: ViewState) => void;
-  currentView: ViewState;
   onSearch: (query: string) => void;
   user: User | null;
   onOpenAuth: () => void;
   onLogout: () => void;
+  theme?: 'dark' | 'light';
+  onToggleTheme?: () => void;
+  onNavigate: (view: ViewState, data?: any) => void;
+  currentView: ViewState;
+  colorTheme?: ColorTheme;
+  onColorChange?: (theme: ColorTheme) => void;
 }
+
+// Mega Menu Data Structure
+const MENU_ITEMS = [
+    {
+        id: 'shop',
+        label: 'MAĞAZA',
+        type: 'mega',
+        view: 'shop',
+        columns: [
+            {
+                title: 'SÜRÜCÜ EKİPMANI',
+                items: [
+                    { label: 'Kasklar', value: ProductCategory.HELMET },
+                    { label: 'Montlar', value: ProductCategory.JACKET },
+                    { label: 'Eldivenler', value: ProductCategory.GLOVES },
+                    { label: 'Bot & Ayakkabı', value: ProductCategory.BOOTS },
+                    { label: 'Pantolonlar', value: ProductCategory.PANTS },
+                ]
+            },
+            {
+                title: 'TEKNOLOJİ & AKSESUAR',
+                items: [
+                    { label: 'İnterkom Sistemleri', value: ProductCategory.INTERCOM },
+                    { label: 'Koruma Ekipmanları', value: ProductCategory.PROTECTION },
+                    { label: 'Motosiklet Aksesuarları', value: ProductCategory.ACCESSORY },
+                ]
+            }
+        ],
+        featured: {
+            title: "YENİ SEZON",
+            desc: "2024 Koleksiyonu Yayında",
+            image: "https://images.unsplash.com/photo-1622185135505-2d795043ec63?q=80&w=600&auto=format&fit=crop"
+        }
+    },
+    { id: 'routes', label: 'ROTALAR', type: 'link', view: 'routes' },
+    { id: 'meetup', label: 'ETKİNLİKLER', type: 'link', view: 'meetup' },
+    { id: 'blog', label: 'BLOG', type: 'link', view: 'blog' },
+    { id: 'about', label: 'HİKAYEMİZ', type: 'link', view: 'about' },
+];
 
 export const Navbar: React.FC<NavbarProps> = ({ 
   cartCount, 
-  favoritesCount,
   onCartClick, 
-  onFavoritesClick,
-  onNavigate, 
-  currentView, 
-  onSearch,
-  user,
   onOpenAuth,
+  onNavigate,
+  user,
+  colorTheme,
+  onColorChange,
   onLogout
 }) => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  // Input ref for auto-focus
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // Cart Animation State
-  const [animateCart, setAnimateCart] = useState(false);
-  const prevCartCountRef = useRef(cartCount);
-
-  // Favorites Animation State
-  const [animateFav, setAnimateFav] = useState(false);
-  const prevFavCountRef = useRef(favoritesCount);
+  const [activeHover, setActiveHover] = useState<string | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+  const [isColorMenuOpen, setIsColorMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
-      // 50px'i geçince daha yumuşak bir geçiş başlasın
-      setIsScrolled(window.scrollY > 50);
+        setScrolled(window.scrollY > 20);
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Auto-focus search input when opened
+  // Close mega menu when scrolling
   useEffect(() => {
-    if (isSearchOpen && searchInputRef.current) {
-      // Small delay to ensure animation doesn't interfere with focus
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-    }
-  }, [isSearchOpen]);
+      const closeMenu = () => setActiveHover(null);
+      window.addEventListener('scroll', closeMenu);
+      return () => window.removeEventListener('scroll', closeMenu);
+  }, []);
 
-  // Trigger animation when cart count increases
-  useEffect(() => {
-    if (cartCount > prevCartCountRef.current) {
-        setAnimateCart(true);
-        const timer = setTimeout(() => setAnimateCart(false), 400);
-        return () => clearTimeout(timer);
-    }
-    prevCartCountRef.current = cartCount;
-  }, [cartCount]);
+  const handleNavClick = (view: ViewState, data?: any) => {
+      onNavigate(view, data);
+      setActiveHover(null);
+  };
 
-  // Trigger animation when favorites count increases
-  useEffect(() => {
-    if (favoritesCount > prevFavCountRef.current) {
-        setAnimateFav(true);
-        const timer = setTimeout(() => setAnimateFav(false), 400);
-        return () => clearTimeout(timer);
-    }
-    prevFavCountRef.current = favoritesCount;
-  }, [favoritesCount]);
-
-  if (currentView === 'admin_panel' || currentView === 'ride_mode') return null;
+  const colors: { id: ColorTheme; bg: string; label: string }[] = [
+      { id: 'orange', bg: 'bg-[#F2A619]', label: 'KTM' },
+      { id: 'red', bg: 'bg-[#EF4444]', label: 'Ducati' },
+      { id: 'blue', bg: 'bg-[#3B82F6]', label: 'Yamaha' },
+      { id: 'green', bg: 'bg-[#22C55E]', label: 'Kawasaki' },
+      { id: 'cyan', bg: 'bg-[#06B6D4]', label: 'Neon' },
+      { id: 'purple', bg: 'bg-[#A855F7]', label: 'Retro' },
+      { id: 'yellow', bg: 'bg-[#EAB308]', label: 'VR46' },
+  ];
 
   return (
-    <nav 
-      className={`fixed z-50 left-0 right-0 flex justify-center transition-all duration-1000 ease-in-out ${
-        isScrolled ? 'top-4' : 'top-0'
-      }`}
-    >
-      <div 
-        className={`
-          relative flex items-center justify-between
-          transition-all duration-1000 ease-[cubic-bezier(0.25,0.1,0.25,1.0)]
-          ${isScrolled 
-            ? 'w-[85%] max-w-6xl bg-[#050505]/60 backdrop-blur-xl border border-white/10 rounded-full shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] py-3 px-8' 
-            : 'w-full bg-transparent border-transparent py-8 px-8 sm:px-12 bg-gradient-to-b from-black/90 to-transparent'
-          }
-        `}
+    <>
+      <header 
+        className={`fixed top-0 left-0 right-0 z-[40] transition-all duration-500
+        ${scrolled || activeHover ? 'bg-white/90 dark:bg-[#050505]/90 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 py-3 shadow-md' : 'bg-transparent border-b border-transparent py-4 md:py-6'}`}
+        onMouseLeave={() => setActiveHover(null)}
       >
-          
-          {/* Logo Section */}
-          <div className={`flex items-center gap-3 cursor-pointer group transition-all duration-1000 origin-left ${isScrolled ? 'scale-90' : 'scale-100'}`} onClick={() => onNavigate('home')}>
-            <div className={`p-1.5 rounded-lg bg-moto-accent group-hover:shadow-[0_0_20px_#ff1f1f] transition-all duration-500 transform group-hover:scale-105`}>
-               <Zap className="h-5 w-5 text-white fill-white" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-2xl font-display font-bold tracking-tighter text-white leading-none transition-all duration-500">
-                MOTO<span className="text-moto-accent">VIBE</span>
-              </span>
-              <div className={`overflow-hidden transition-all duration-700 ${isScrolled ? 'h-0 opacity-0' : 'h-auto opacity-100'}`}>
-                <span className="text-[8px] text-gray-400 font-mono tracking-[0.3em] uppercase hidden sm:block">
-                  Premium Gear
-                </span>
-              </div>
-            </div>
-          </div>
+        <div className="max-w-[1600px] mx-auto px-4 md:px-8 h-full">
+            <div className="flex justify-between items-center h-full">
+                
+                {/* --- LOGO --- */}
+                <div className="flex-shrink-0 flex items-center z-50">
+                    <button 
+                        onClick={() => handleNavClick('home')}
+                        className="group flex items-center gap-2 md:gap-3 transition-transform duration-300 hover:scale-105"
+                    >
+                        <div className="relative w-8 h-8 md:w-10 md:h-10 flex items-center justify-center">
+                            <div className="absolute inset-0 bg-moto-accent rounded-xl rotate-0 group-hover:rotate-12 transition-transform duration-300 opacity-20"></div>
+                            <div className="absolute inset-0 bg-moto-accent rounded-xl rotate-0 group-hover:-rotate-6 transition-transform duration-300 opacity-40"></div>
+                            <div className="relative w-8 h-8 md:w-10 md:h-10 bg-moto-accent rounded-lg md:rounded-xl flex items-center justify-center text-black shadow-lg shadow-moto-accent/30 group-hover:scale-105 transition-transform">
+                                <Zap className="w-5 h-5 md:w-6 md:h-6 fill-current" />
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-start leading-none">
+                            <span className="font-display font-black tracking-tighter text-xl md:text-2xl text-gray-900 dark:text-white drop-shadow-sm transition-colors">
+                                MOTO<span className="text-moto-accent">VIBE</span>
+                            </span>
+                            <span className="text-[8px] md:text-[9px] font-bold text-gray-500 dark:text-gray-400 tracking-[0.3em] uppercase group-hover:text-black dark:group-hover:text-white transition-colors hidden md:block">Premium Gear</span>
+                        </div>
+                    </button>
+                </div>
 
-          {/* Desktop Menu */}
-          <div className={`hidden md:flex items-center bg-black/20 rounded-full p-1 border border-white/5 backdrop-blur-sm transition-all duration-1000 ${isScrolled ? 'scale-90 opacity-100' : 'scale-100 opacity-100'}`}>
-              <button 
-                onClick={() => onNavigate('home')} 
-                className={`px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-500 ${currentView === 'home' ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-              >
-                ANA SAYFA
-              </button>
-              <button 
-                onClick={() => onNavigate('shop')} 
-                className={`px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-500 ${currentView === 'shop' ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-              >
-                MAĞAZA
-              </button>
-              <button 
-                onClick={() => onNavigate('forum')} 
-                className={`px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-500 ${currentView === 'forum' ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-              >
-                FORUM
-              </button>
-              <button 
-                onClick={() => onNavigate('ai_assistant')} 
-                className={`px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-500 flex items-center gap-2 ${currentView === 'ai_assistant' ? 'bg-moto-accent text-white shadow-[0_0_15px_rgba(255,31,31,0.4)]' : 'text-gray-400 hover:text-moto-accent hover:bg-white/5'}`}
-              >
-                <Sparkles className="w-3 h-3" />
-                AI ASİSTAN
-              </button>
-          </div>
+                {/* --- DESKTOP NAVIGATION --- */}
+                <nav className="hidden lg:flex items-center justify-center gap-1 h-full bg-gray-100/50 dark:bg-white/5 rounded-full px-2 border border-gray-200 dark:border-white/5 backdrop-blur-md">
+                    {MENU_ITEMS.map((item) => (
+                        <div 
+                            key={item.id}
+                            className="h-full flex items-center"
+                            onMouseEnter={() => setActiveHover(item.id)}
+                        >
+                            <button 
+                                onClick={() => handleNavClick(item.view as ViewState)}
+                                className={`relative px-5 py-2.5 text-xs font-bold tracking-widest transition-all duration-300 group flex items-center gap-1 rounded-full uppercase hover:scale-105
+                                ${activeHover === item.id ? 'text-white bg-black dark:bg-white dark:text-black shadow-lg scale-105' : 'text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5'}`}
+                            >
+                                {item.label}
+                                {item.type === 'mega' && (
+                                    <ChevronDown className={`w-3 h-3 transition-transform duration-300 ${activeHover === item.id ? 'rotate-180' : ''}`} />
+                                )}
+                            </button>
+                        </div>
+                    ))}
+                </nav>
 
-          {/* Right Icons */}
-          <div className={`flex items-center gap-3 sm:gap-5 transition-all duration-1000 origin-right ${isScrolled ? 'scale-90' : 'scale-100'}`}>
-            {/* Ride Mode Button (NEW) */}
-            <button 
-              onClick={() => onNavigate('ride_mode')}
-              className="hidden md:flex w-10 h-10 items-center justify-center text-gray-400 hover:text-moto-accent hover:bg-white/10 rounded-full transition-colors group"
-              title="Sürüş Modu"
-            >
-                <Navigation className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            </button>
+                {/* --- ACTIONS --- */}
+                <div className="flex items-center gap-2 md:gap-3 z-50">
+                    
+                    {/* RIDE MODE BUTTON (DESKTOP) */}
+                    <button 
+                        onClick={() => handleNavClick('ride-mode')}
+                        className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-full font-bold text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(220,38,38,0.5)] hover:scale-105 active:scale-95 transition-all border border-red-500 group animate-pulse hover:animate-none"
+                    >
+                        <Navigation className="w-4 h-4 fill-current group-hover:rotate-45 transition-transform" />
+                        <span>SÜRÜŞ MODU</span>
+                    </button>
 
-            {/* Search */}
-            <div 
-              className={`flex items-center transition-all duration-500 ease-out focus-within:border-moto-accent focus-within:shadow-[0_0_15px_rgba(255,31,31,0.4)] ${
-                isSearchOpen 
-                  ? 'bg-black/80 border border-moto-accent shadow-[0_0_15px_rgba(255,31,31,0.3)] w-48 sm:w-64 px-3 py-2.5 rounded-xl' 
-                  : 'w-10 h-10 justify-center cursor-pointer hover:bg-white/10 rounded-full transition-colors'
-              }`}
-            >
-              {isSearchOpen ? (
-                <>
-                  <Search className="h-4 w-4 text-gray-400 flex-shrink-0 mr-2" />
-                  <input 
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Ürün ara..."
-                    className="bg-transparent border-none focus:ring-0 text-white text-sm w-full placeholder-gray-600 outline-none font-medium"
-                    onChange={(e) => onSearch(e.target.value)}
-                  />
-                  <button onClick={() => {setIsSearchOpen(false); onSearch('')}} className="ml-1 text-gray-400 hover:text-white">
-                    <X className="h-3 w-3" />
-                  </button>
-                </>
-              ) : (
-                <button onClick={() => setIsSearchOpen(true)} className="text-gray-400 hover:text-white w-full h-full flex items-center justify-center">
-                  <Search className="h-5 w-5" />
-                </button>
-              )}
-            </div>
-            
-            {/* Favorites */}
-            <button 
-              onClick={onFavoritesClick}
-              className={`relative w-10 h-10 flex items-center justify-center transition-all duration-300 rounded-full hover:bg-white/10 group ${
-                animateFav ? 'scale-110 bg-white/5' : ''
-              } ${currentView === 'favorites' ? 'text-moto-accent bg-white/10' : 'text-gray-400'}`}
-            >
-              <Heart className={`h-5 w-5 transition-colors ${currentView === 'favorites' || animateFav ? 'fill-moto-accent text-moto-accent' : 'group-hover:text-white'}`} />
-              {favoritesCount > 0 && (
-                <span className={`absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-gray-700 rounded-full border border-black transition-all duration-300 ${
-                    animateFav ? 'scale-125 bg-moto-accent' : 'scale-100'
-                }`}>
-                  {favoritesCount}
-                </span>
-              )}
-            </button>
+                    {/* Theme Picker (Desktop) */}
+                    <div className="relative hidden md:block">
+                        <button 
+                            onClick={() => setIsColorMenuOpen(!isColorMenuOpen)}
+                            className={`
+                                flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 border hover:scale-110 active:scale-95
+                                ${isColorMenuOpen 
+                                    ? 'bg-moto-accent/10 border-moto-accent text-moto-accent ring-2 ring-moto-accent/20' 
+                                    : 'bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/5 text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/10'
+                                }
+                            `}
+                            title="Renk Temasını Değiştir"
+                        >
+                            <Palette className="w-5 h-5" />
+                        </button>
+                        
+                        <AnimatePresence>
+                            {isColorMenuOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setIsColorMenuOpen(false)}></div>
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute right-0 top-full mt-4 w-72 p-4 bg-white dark:bg-[#111]/95 border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl z-20 flex flex-col gap-3 backdrop-blur-xl"
+                                    >
+                                        <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/10 pb-2 mb-2">
+                                            <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Arayüz Teması</span>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-4 gap-3">
+                                            {colors.map(c => (
+                                                <button
+                                                    key={c.id}
+                                                    onClick={() => { if(onColorChange) onColorChange(c.id); setIsColorMenuOpen(false); }}
+                                                    className="group relative flex flex-col items-center gap-1"
+                                                >
+                                                    <div className={`
+                                                        w-10 h-10 rounded-full ${c.bg} shadow-lg transition-all duration-300 flex items-center justify-center relative
+                                                        ${colorTheme === c.id ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-[#111]' : 'hover:scale-110 hover:ring-2 hover:ring-white/20'}
+                                                    `}>
+                                                        {colorTheme === c.id && <Check className="w-5 h-5 text-white drop-shadow-md" strokeWidth={3} />}
+                                                    </div>
+                                                    <span className="text-[9px] font-bold text-gray-500 uppercase group-hover:text-black dark:group-hover:text-white transition-colors">{c.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
+                    </div>
 
-            {/* Cart */}
-            <button 
-              onClick={onCartClick}
-              className={`relative w-10 h-10 flex items-center justify-center transition-all duration-300 rounded-full hover:bg-white/10 group ${
-                animateCart ? 'scale-110 rotate-12 bg-moto-accent/10' : ''
-              }`}
-            >
-              <ShoppingCart className={`h-5 w-5 transition-colors ${animateCart ? 'text-moto-accent' : 'text-gray-400 group-hover:text-white'}`} />
-              {cartCount > 0 && (
-                <span className={`absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-moto-accent rounded-full shadow-[0_0_10px_#ff1f1f] transition-all duration-300 ${
-                    animateCart ? 'scale-125' : 'scale-100'
-                }`}>
-                  {cartCount}
-                </span>
-              )}
-            </button>
-
-            {/* User Section */}
-            <div className="hidden md:block border-l border-white/10 pl-5 transition-all duration-500">
-               {user ? (
-                 <div className="flex items-center gap-2 group cursor-pointer" onClick={() => onNavigate('profile')}>
-                   <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-gray-800 to-black border border-white/10 flex items-center justify-center group-hover:border-moto-accent transition-all shadow-lg overflow-hidden relative">
-                      {user.isAdmin && (
-                          <div className="absolute top-0 right-0 w-2 h-2 bg-moto-accent rounded-full border border-black"></div>
-                      )}
-                      <span className="font-display font-bold text-sm text-white group-hover:scale-110 transition-transform">{user.name.charAt(0)}</span>
-                   </div>
-                   {user.isAdmin && !isScrolled && (
-                       <div className="absolute -bottom-4 right-0 text-[8px] text-moto-accent font-bold uppercase tracking-wider hidden group-hover:block animate-in fade-in">
-                           Admin
-                       </div>
-                   )}
-                 </div>
-               ) : (
-                 <button 
-                    onClick={onOpenAuth}
-                    className="text-xs font-bold text-white bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-lg transition-all border border-white/5 hover:border-white/20 tracking-wide"
-                 >
-                    GİRİŞ
-                 </button>
-               )}
-            </div>
-
-            {/* Mobile Menu Button */}
-            <button 
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-          </div>
-
-          {/* Mobile Menu Dropdown */}
-          {isMobileMenuOpen && (
-            <div className="absolute top-full left-0 w-full mt-4 px-2 animate-in fade-in slide-in-from-top-4 duration-300">
-              <div className="bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col space-y-2 shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
-                  <button onClick={() => {onNavigate('home'); setIsMobileMenuOpen(false)}} className="text-left p-3 hover:bg-white/5 rounded-xl text-white font-display text-sm tracking-wider">ANA SAYFA</button>
-                  <button onClick={() => {onNavigate('shop'); setIsMobileMenuOpen(false)}} className="text-left p-3 hover:bg-white/5 rounded-xl text-white font-display text-sm tracking-wider">MAĞAZA</button>
-                  <button onClick={() => {onNavigate('favorites'); setIsMobileMenuOpen(false)}} className="text-left p-3 hover:bg-white/5 rounded-xl text-white font-display text-sm tracking-wider flex items-center gap-2"><Heart className="w-4 h-4 text-moto-accent"/> FAVORİLERİM ({favoritesCount})</button>
-                  <button onClick={() => {onNavigate('forum'); setIsMobileMenuOpen(false)}} className="text-left p-3 hover:bg-white/5 rounded-xl text-white font-display text-sm tracking-wider">FORUM</button>
-                  <button onClick={() => {onNavigate('ride_mode'); setIsMobileMenuOpen(false)}} className="text-left p-3 hover:bg-white/5 rounded-xl text-white font-display text-sm tracking-wider flex items-center gap-2"><Navigation className="w-4 h-4 text-moto-accent"/> SÜRÜŞ MODU</button>
-                  <button onClick={() => {onNavigate('ai_assistant'); setIsMobileMenuOpen(false)}} className="text-left p-3 hover:bg-moto-accent/10 rounded-xl text-moto-accent font-display text-sm tracking-wider font-bold">AI ASİSTAN</button>
-                  <div className="h-px bg-white/10 my-2"></div>
-                  {user ? (
-                      <>
-                        <button onClick={() => {onNavigate('profile'); setIsMobileMenuOpen(false)}} className="text-left p-3 hover:bg-white/5 rounded-xl text-gray-300 text-sm flex items-center gap-2"><UserIcon className="w-4 h-4" /> Profilim</button>
-                        {user.isAdmin && (
-                           <button onClick={() => {onNavigate('admin_panel'); setIsMobileMenuOpen(false)}} className="text-left p-3 hover:bg-white/5 rounded-xl text-moto-accent font-bold text-sm flex items-center gap-2"><Zap className="w-4 h-4" /> Yönetici Paneli</button>
+                    {/* Search (Desktop) */}
+                    <button 
+                        onClick={() => handleNavClick('shop')}
+                        className="hidden md:flex w-10 h-10 items-center justify-center rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-all hover:border-gray-300 dark:hover:border-white/20 hover:scale-110 active:scale-95"
+                    >
+                        <Search className="w-5 h-5" />
+                    </button>
+                    
+                    {/* Cart Icon (Desktop & Mobile) */}
+                    <button 
+                        onClick={onCartClick}
+                        className="relative w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition-all group hover:border-moto-accent/50 hover:scale-110 active:scale-95"
+                        id="cart-icon-desktop"
+                    >
+                        <ShoppingBag className="w-5 h-5 group-hover:text-moto-accent transition-colors" />
+                        {cartCount > 0 && (
+                            <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 bg-moto-accent text-black text-[10px] font-bold rounded-full shadow-[0_0_10px_rgba(var(--moto-accent-rgb),0.5)] ring-2 ring-white dark:ring-[#050505]">
+                                {cartCount}
+                            </span>
                         )}
-                        <button onClick={onLogout} className="text-left p-3 hover:bg-red-900/20 rounded-xl text-red-400 text-sm flex items-center gap-2"><LogOut className="w-4 h-4" /> Çıkış Yap</button>
-                      </>
-                  ) : (
-                      <button onClick={() => {onOpenAuth(); setIsMobileMenuOpen(false)}} className="text-left p-3 bg-moto-accent rounded-xl text-white font-bold text-center shadow-lg shadow-moto-accent/20">GİRİŞ YAP</button>
-                  )}
-              </div>
+                    </button>
+
+                    {/* Auth / Profile (Desktop) */}
+                    <div className="hidden md:block">
+                        {user ? (
+                            <button 
+                                onClick={() => handleNavClick('profile')}
+                                className="flex items-center gap-3 pl-2 pr-4 py-1.5 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 border border-gray-200 dark:border-white/5 hover:border-moto-accent/50 rounded-full transition-all group hover:scale-105 active:scale-95"
+                            >
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-900 flex items-center justify-center text-gray-700 dark:text-white border border-white/10 group-hover:border-moto-accent transition-colors">
+                                    <UserIcon className="w-4 h-4" />
+                                </div>
+                                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 group-hover:text-black dark:group-hover:text-white max-w-[100px] truncate">{user.name.split(' ')[0]}</span>
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={onOpenAuth}
+                                className="px-6 py-2.5 bg-black dark:bg-white text-white dark:text-black hover:bg-moto-accent hover:text-black dark:hover:bg-moto-accent dark:hover:text-black rounded-full font-bold text-xs uppercase tracking-wider transition-all shadow-lg shadow-black/5 hover:shadow-moto-accent/40 hover:scale-105 active:scale-95"
+                            >
+                                Giriş Yap
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
-          )}
-      </div>
-    </nav>
+        </div>
+
+        {/* --- MEGA MENU DROPDOWN (Desktop) --- */}
+        <AnimatePresence>
+            {activeHover && (
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.2 }}
+                    className="hidden lg:block absolute top-full left-0 right-0 bg-white/95 dark:bg-[#050505]/95 backdrop-blur-3xl border-b border-gray-200 dark:border-white/10 shadow-2xl overflow-hidden"
+                    onMouseEnter={() => setActiveHover(activeHover)}
+                    onMouseLeave={() => setActiveHover(null)}
+                >
+                    <div className="max-w-[1600px] mx-auto px-8 py-12">
+                        {MENU_ITEMS.map((item) => (
+                            item.id === activeHover && item.type === 'mega' && item.columns ? (
+                                <div key={item.id} className="grid grid-cols-12 gap-12">
+                                    
+                                    {/* Categories */}
+                                    <div className="col-span-8 grid grid-cols-2 gap-12 border-r border-gray-200 dark:border-white/5 pr-12">
+                                        {item.columns.map((col, idx) => (
+                                            <div key={idx}>
+                                                <h3 className="flex items-center gap-3 text-sm font-bold text-moto-accent tracking-[0.2em] uppercase mb-8">
+                                                    <span className="w-8 h-[1px] bg-moto-accent"></span>
+                                                    {col.title}
+                                                </h3>
+                                                <ul className="space-y-4">
+                                                    {col.items.map((subItem, subIdx) => (
+                                                        <li key={subIdx}>
+                                                            <button 
+                                                                onClick={() => handleNavClick(item.view as ViewState, subItem.value)}
+                                                                className="group flex items-center gap-3 text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white transition-colors text-base font-medium w-full text-left"
+                                                            >
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-white/10 group-hover:bg-moto-accent transition-colors"></div>
+                                                                <span className="group-hover:translate-x-2 transition-transform duration-300">{subItem.label}</span>
+                                                            </button>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Featured Image Card */}
+                                    {item.featured && (
+                                        <div className="col-span-4">
+                                            <div 
+                                                className="relative group cursor-pointer overflow-hidden rounded-3xl h-full min-h-[350px] border border-gray-200 dark:border-white/10"
+                                                onClick={() => handleNavClick(item.view as ViewState)}
+                                            >
+                                                <img 
+                                                    src={item.featured.image} 
+                                                    alt={item.featured.title} 
+                                                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100"
+                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                                                
+                                                <div className="absolute bottom-0 left-0 p-8 w-full">
+                                                    <div className="inline-block px-3 py-1 bg-moto-accent text-black text-[10px] font-bold uppercase tracking-wider rounded-md mb-4 shadow-lg">
+                                                        Editörün Seçimi
+                                                    </div>
+                                                    <h3 className="text-4xl font-display font-black text-white mb-2 leading-none uppercase drop-shadow-md">
+                                                        {item.featured.title}
+                                                    </h3>
+                                                    <p className="text-gray-200 text-sm mb-6 max-w-[80%] drop-shadow-sm">{item.featured.desc}</p>
+                                                    <div className="w-full h-[1px] bg-white/20 mb-4">
+                                                        <div className="h-full bg-moto-accent w-0 group-hover:w-full transition-all duration-700 ease-out"></div>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white">
+                                                        <span>Şimdi Keşfet</span>
+                                                        <Zap className="w-4 h-4 text-moto-accent" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : null
+                        ))}
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+      </header>
+    </>
   );
 };

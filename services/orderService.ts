@@ -1,10 +1,15 @@
+
 import { Order, CartItem, User } from '../types';
 import { DB, getStorage, setStorage, delay } from './db';
 import { CONFIG } from './config';
 import { logService } from './logService';
+import { gamificationService, POINTS } from './gamificationService';
 
 export const orderService = {
   async createOrder(user: User, items: CartItem[], total: number): Promise<Order> {
+    // Calculate points: 1 point per 10 TL
+    const pointsEarned = Math.floor(total / 10) * POINTS.PER_10_TL_SPENT;
+
     if (CONFIG.USE_MOCK_API) {
         await delay(1000);
         const orders = getStorage<Order[]>(DB.ORDERS, []);
@@ -27,6 +32,11 @@ export const orderService = {
 
         // LOG: Yeni Sipariş
         await logService.addLog('success', 'Yeni Sipariş', `Sipariş No: ${newOrder.id} - Tutar: ₺${total}`);
+        
+        // Gamification: Add Points
+        if (pointsEarned > 0) {
+            await gamificationService.addPoints(user.id, pointsEarned, 'Alışveriş Puanı');
+        }
 
         return newOrder;
     } else {
@@ -54,6 +64,12 @@ export const orderService = {
         if(CONFIG.USE_MOCK_API) {
             await logService.addLog('success', 'Yeni Sipariş', `Tutar: ₺${total}`);
         }
+        
+        // Backend should handle points ideally, but for now we call service
+        if (pointsEarned > 0) {
+            await gamificationService.addPoints(user.id, pointsEarned, 'Alışveriş Puanı');
+        }
+
         return result;
     }
   },
@@ -69,5 +85,36 @@ export const orderService = {
         if (!response.ok) return [];
         return await response.json();
     }
+  },
+
+  async getAllOrders(): Promise<Order[]> {
+      if (CONFIG.USE_MOCK_API) {
+          await delay(500);
+          return getStorage<Order[]>(DB.ORDERS, []);
+      } else {
+          // REAL BACKEND
+          const response = await fetch(`${CONFIG.API_URL}/orders`);
+          if (!response.ok) return [];
+          return await response.json();
+      }
+  },
+
+  async updateOrderStatus(orderId: string, status: string): Promise<void> {
+      if (CONFIG.USE_MOCK_API) {
+          await delay(300);
+          const orders = getStorage<Order[]>(DB.ORDERS, []);
+          const index = orders.findIndex(o => o.id === orderId);
+          if (index !== -1) {
+              orders[index].status = status as any;
+              setStorage(DB.ORDERS, orders);
+          }
+      } else {
+          // REAL BACKEND
+          await fetch(`${CONFIG.API_URL}/orders/${orderId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status })
+          });
+      }
   }
 };

@@ -35,7 +35,8 @@ export const productService = {
         ...product,
         images: product.images || [product.image],
         image: product.image || (product.images && product.images[0]) || '',
-        stock: product.stock || 0
+        stock: product.stock || 0,
+        model3d: product.model3d || ''
     };
 
     if (CONFIG.USE_MOCK_API) {
@@ -79,7 +80,8 @@ export const productService = {
         ...product,
         images: product.images || [product.image],
         image: product.image || (product.images && product.images[0]) || '',
-        stock: product.stock || 0
+        stock: product.stock || 0,
+        model3d: product.model3d || ''
     };
 
     if (CONFIG.USE_MOCK_API) {

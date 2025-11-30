@@ -9,7 +9,17 @@ export const sliderService = {
     if (CONFIG.USE_MOCK_API) {
         await delay(300);
         const storedSlides = getStorage<Slide[]>(DB.SLIDES, []);
-        if (storedSlides.length === 0) {
+        
+        // MIGRATION FIX:
+        // Check if the first slide is the new Video slide. If not, forcing a data reset.
+        // This ensures users who visited before the video update see the new video.
+        const isOutdated = storedSlides.length > 0 && (
+            storedSlides[0].id === 1 && 
+            (storedSlides[0].type !== 'video' || !storedSlides[0].videoUrl)
+        );
+        
+        if (storedSlides.length === 0 || isOutdated) {
+            console.log("♻️ Slider verisi yeni video formatına güncelleniyor...");
             setStorage(DB.SLIDES, DEFAULT_SLIDES);
             return DEFAULT_SLIDES;
         }

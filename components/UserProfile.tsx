@@ -1,26 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { User, Package, Settings, Bike, MapPin, Phone, Mail, Shield, LogOut, Edit2, ShoppingBag, ShieldAlert, Plus, X, Trash2, Gauge, Calendar, Droplets } from 'lucide-react';
-import { User as UserType, Order, ViewState } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { User, Package, Settings, Bike, LogOut, Edit2, ShoppingBag, Plus, X, Trash2, Award, Clock, CheckCircle, LayoutDashboard, Upload, Image as ImageIcon, Loader2, Palette, Trophy, Star } from 'lucide-react';
+import { User as UserType, Order, ViewState, ColorTheme, UserBike as UserBikeType } from '../types';
 import { Button } from './Button';
 import { orderService } from '../services/orderService';
+import { authService } from '../services/auth';
+import { storageService } from '../services/storageService';
+import { UserAvatar } from './UserAvatar';
+import { RANKS } from '../services/gamificationService';
 
 interface UserProfileProps {
   user: UserType;
   onLogout: () => void;
+  onUpdateUser: (user: UserType) => void;
   onNavigate: (view: ViewState) => void;
+  colorTheme?: ColorTheme;
+  onColorChange?: (theme: ColorTheme) => void;
 }
 
 type Tab = 'profile' | 'orders' | 'garage' | 'settings';
-
-interface UserBike {
-  id: number;
-  brand: string;
-  model: string;
-  year: string;
-  km: string;
-  color: string;
-  image: string;
-}
 
 const POPULAR_BRANDS = [
     { name: 'Yamaha', image: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?q=80&w=800&auto=format&fit=crop' },
@@ -32,483 +29,429 @@ const POPULAR_BRANDS = [
     { name: 'Diğer', image: 'https://images.unsplash.com/photo-1449426468159-d96dbf08f19f?q=80&w=800&auto=format&fit=crop' }
 ];
 
-export const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout, onNavigate }) => {
+export const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout, onUpdateUser, onNavigate, colorTheme, onColorChange }) => {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState({ name: user.name, phone: user.phone || '', address: user.address || '' });
+  
+  // Initialize from user.garage or default if empty
+  const [myBikes, setMyBikes] = useState<UserBikeType[]>(
+      user.garage && user.garage.length > 0 
+      ? user.garage 
+      : [{ id: 1, brand: 'Yamaha', model: 'MT-07', year: '2023', km: '12.450', color: 'Gece Siyahı', image: POPULAR_BRANDS[0].image }]
+  );
 
-  // Garage State
-  const [myBikes, setMyBikes] = useState<UserBike[]>([
-    {
-        id: 1,
-        brand: 'Yamaha',
-        model: 'MT-07',
-        year: '2023',
-        km: '12.450',
-        color: 'Gece Siyahı',
-        image: POPULAR_BRANDS[0].image
-    }
-  ]);
   const [isAddBikeModalOpen, setIsAddBikeModalOpen] = useState(false);
-  const [newBike, setNewBike] = useState<Partial<UserBike>>({ brand: 'Yamaha', model: '', year: '', km: '', color: '' });
+  const [newBike, setNewBike] = useState<Partial<UserBikeType>>({ brand: 'Yamaha', model: '', year: '', km: '', color: '', image: '' });
+  const [isUploadingBike, setIsUploadingBike] = useState(false);
+  const bikeFileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => { if (activeTab === 'orders') fetchOrders(); }, [activeTab]);
+  useEffect(() => { setFormData({ name: user.name, phone: user.phone || '', address: user.address || '' }); }, [user]);
+
+  // Sync garage changes to parent user object (simplified persistence)
   useEffect(() => {
-    if (activeTab === 'orders') {
-      fetchOrders();
-    }
-  }, [activeTab]);
+      // Only update if there's a difference to avoid loop
+      if (JSON.stringify(user.garage) !== JSON.stringify(myBikes)) {
+          const updatedUser = { ...user, garage: myBikes };
+          // We call authService to persist this in local storage
+          authService.updateProfile({ garage: myBikes }).then(u => onUpdateUser(u));
+      }
+  }, [myBikes]);
 
   const fetchOrders = async () => {
     setLoadingOrders(true);
-    try {
-      const userOrders = await orderService.getUserOrders(user.id);
-      setOrders(userOrders);
-    } catch (error) {
-      console.error("Siparişler alınamadı", error);
-    } finally {
-      setLoadingOrders(false);
-    }
+    try { const userOrders = await orderService.getUserOrders(user.id); setOrders(userOrders); } 
+    catch (error) { console.error("Siparişler alınamadı", error); } 
+    finally { setLoadingOrders(false); }
+  };
+
+  const handleSaveProfile = async () => {
+      setIsSaving(true);
+      try {
+          const updatedUser = await authService.updateProfile(formData);
+          onUpdateUser(updatedUser);
+          setIsEditing(false);
+      } catch (error) { alert('Hata oluştu.'); } finally { setIsSaving(false); }
+  };
+
+  const handleBikeImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          setIsUploadingBike(true);
+          try {
+              const url = await storageService.uploadFile(file);
+              setNewBike(prev => ({ ...prev, image: url }));
+          } catch (error) {
+              console.error("Resim yüklenemedi", error);
+          } finally {
+              setIsUploadingBike(false);
+          }
+      }
   };
 
   const handleAddBike = (e: React.FormEvent) => {
       e.preventDefault();
-      const brandImage = POPULAR_BRANDS.find(b => b.name === newBike.brand)?.image || POPULAR_BRANDS[6].image;
+      const brandImage = newBike.image || POPULAR_BRANDS.find(b => b.name === newBike.brand)?.image || POPULAR_BRANDS[6].image;
       
-      const bikeToAdd: UserBike = {
-          id: Date.now(),
-          brand: newBike.brand || 'Diğer',
-          model: newBike.model || 'Bilinmiyor',
-          year: newBike.year || '2024',
-          km: newBike.km || '0',
-          color: newBike.color || 'Siyah',
-          image: brandImage
-      };
-
-      setMyBikes([...myBikes, bikeToAdd]);
+      setMyBikes([...myBikes, { 
+          id: Date.now(), 
+          brand: newBike.brand!, 
+          model: newBike.model!, 
+          year: newBike.year!, 
+          km: newBike.km!, 
+          color: newBike.color!, 
+          image: brandImage 
+      }]);
       setIsAddBikeModalOpen(false);
-      setNewBike({ brand: 'Yamaha', model: '', year: '', km: '', color: '' });
+      setNewBike({ brand: 'Yamaha', image: '' });
   };
 
-  const handleDeleteBike = (id: number) => {
-      if (confirm('Bu motoru garajından çıkarmak istediğine emin misin?')) {
-          setMyBikes(myBikes.filter(b => b.id !== id));
+  const handleRemoveBike = (id: number) => {
+      if(confirm('Bu motoru garajdan çıkarmak istediğine emin misin?')) {
+          setMyBikes(prev => prev.filter(b => b.id !== id));
       }
   };
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'profile':
-        return (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-bold text-white">Kişisel Bilgiler</h3>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Edit2 className="w-4 h-4" /> Düzenle
-              </Button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gray-800/50 p-5 rounded-xl border border-gray-700">
-                <div className="flex items-center gap-3 mb-2 text-gray-400">
-                  <User className="w-4 h-4" />
-                  <span className="text-xs uppercase font-bold tracking-wider">Ad Soyad</span>
-                </div>
-                <div className="text-white text-lg font-medium">{user.name}</div>
-              </div>
+  const colors: { id: ColorTheme; bg: string; label: string }[] = [
+      { id: 'orange', bg: 'bg-[#F2A619]', label: 'KTM Orange' },
+      { id: 'red', bg: 'bg-[#EF4444]', label: 'Ducati Red' },
+      { id: 'blue', bg: 'bg-[#3B82F6]', label: 'Yamaha Blue' },
+      { id: 'green', bg: 'bg-[#22C55E]', label: 'Kawa Green' },
+      { id: 'cyan', bg: 'bg-[#06B6D4]', label: 'Neon Cyan' },
+      { id: 'purple', bg: 'bg-[#A855F7]', label: 'Retro Purple' },
+      { id: 'yellow', bg: 'bg-[#EAB308]', label: 'VR46 Yellow' },
+  ];
 
-              <div className="bg-gray-800/50 p-5 rounded-xl border border-gray-700">
-                <div className="flex items-center gap-3 mb-2 text-gray-400">
-                  <Mail className="w-4 h-4" />
-                  <span className="text-xs uppercase font-bold tracking-wider">E-posta</span>
-                </div>
-                <div className="text-white text-lg font-medium">{user.email}</div>
-              </div>
+  // Rank Calculation for Progress Bar
+  const currentRank = user.rank || 'Scooter Çırağı';
+  const currentPoints = user.points || 0;
+  let nextRank = '';
+  let minPoints = 0;
+  let maxPoints = 200;
 
-              <div className="bg-gray-800/50 p-5 rounded-xl border border-gray-700">
-                <div className="flex items-center gap-3 mb-2 text-gray-400">
-                  <Phone className="w-4 h-4" />
-                  <span className="text-xs uppercase font-bold tracking-wider">Telefon</span>
-                </div>
-                <div className="text-white text-lg font-medium">{user.phone || '+90 555 123 45 67'}</div>
-              </div>
+  if (currentRank === 'Scooter Çırağı') {
+      nextRank = 'Viraj Ustası';
+      minPoints = RANKS.BEGINNER.min;
+      maxPoints = RANKS.BEGINNER.max;
+  } else if (currentRank === 'Viraj Ustası') {
+      nextRank = 'Yol Kaptanı';
+      minPoints = RANKS.INTERMEDIATE.min;
+      maxPoints = RANKS.INTERMEDIATE.max;
+  } else {
+      nextRank = 'Max Seviye';
+      minPoints = RANKS.EXPERT.min;
+      maxPoints = currentPoints + 1000; // Fake max
+  }
 
-              <div className="bg-gray-800/50 p-5 rounded-xl border border-gray-700">
-                <div className="flex items-center gap-3 mb-2 text-gray-400">
-                  <MapPin className="w-4 h-4" />
-                  <span className="text-xs uppercase font-bold tracking-wider">Adres</span>
-                </div>
-                <div className="text-white text-lg font-medium">{user.address || 'Kadıköy, İstanbul'}</div>
-              </div>
-            </div>
-
-            <div className="bg-moto-accent/10 p-6 rounded-xl border border-moto-accent/20 flex items-start gap-4 mt-6">
-              <Shield className="w-8 h-8 text-moto-accent flex-shrink-0" />
-              <div>
-                <h4 className="text-white font-bold mb-1">MotoVibe Üye</h4>
-                <p className="text-gray-400 text-sm">Üyeliğiniz aktiftir. Kayıt tarihi: {user.joinDate}</p>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'orders':
-        return (
-          <div className="space-y-6 animate-in fade-in duration-300">
-             <h3 className="text-2xl font-bold text-white">Sipariş Geçmişi</h3>
-             
-             {loadingOrders ? (
-               <div className="flex items-center justify-center py-12">
-                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-moto-accent"></div>
-               </div>
-             ) : orders.length === 0 ? (
-               <div className="text-center py-12 bg-gray-800/30 rounded-xl border border-gray-800 border-dashed">
-                 <ShoppingBag className="w-12 h-12 mx-auto text-gray-600 mb-4" />
-                 <h4 className="text-lg font-medium text-white mb-2">Henüz siparişiniz yok</h4>
-                 <p className="text-gray-400 text-sm">Mağazadan ilk siparişinizi verin.</p>
-               </div>
-             ) : (
-               <div className="space-y-4">
-                  {orders.map(order => (
-                    <div key={order.id} className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 hover:border-gray-600 transition-colors">
-                      <div className="p-4 border-b border-gray-700 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-gray-800/50">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-                           <div>
-                              <div className="text-xs text-gray-400 uppercase">Sipariş No</div>
-                              <div className="text-white font-mono">{order.id}</div>
-                           </div>
-                           <div>
-                              <div className="text-xs text-gray-400 uppercase">Tarih</div>
-                              <div className="text-white">{order.date}</div>
-                           </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                           <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                             order.status === 'Teslim Edildi' ? 'bg-green-900/30 text-green-400 border border-green-900' : 
-                             order.status === 'Kargoda' ? 'bg-blue-900/30 text-blue-400 border border-blue-900' : 
-                             'bg-yellow-900/30 text-yellow-400 border border-yellow-900'
-                           }`}>
-                             {order.status}
-                           </span>
-                           <span className="text-lg font-bold text-white">₺{order.total.toLocaleString('tr-TR')}</span>
-                        </div>
-                      </div>
-                      <div className="p-4">
-                         {order.items.map((item, idx) => (
-                           <div key={idx} className="flex items-center gap-3 text-gray-300 text-sm mb-2 last:mb-0">
-                              <div className="w-8 h-8 rounded bg-gray-700 overflow-hidden">
-                                <img src={item.image} alt="" className="w-full h-full object-cover" />
-                              </div>
-                              <span className="text-moto-accent font-bold">{item.quantity}x</span>
-                              <span>{item.name}</span>
-                           </div>
-                         ))}
-                      </div>
-                    </div>
-                  ))}
-               </div>
-             )}
-          </div>
-        );
-
-      case 'garage':
-        return (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="flex items-center justify-between">
-               <h3 className="text-2xl font-bold text-white">Garajım</h3>
-               <Button size="sm" onClick={() => setIsAddBikeModalOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" /> Motor Ekle
-               </Button>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Bike Cards */}
-              {myBikes.map(bike => (
-                  <div key={bike.id} className="group relative bg-gray-800 rounded-2xl overflow-hidden border border-gray-700 hover:border-moto-accent/50 transition-all shadow-lg hover:shadow-moto-accent/10">
-                    <div className="absolute top-4 right-4 z-20 flex gap-2">
-                        <button 
-                            onClick={() => handleDeleteBike(bike.id)}
-                            className="p-1.5 bg-black/50 rounded-full text-gray-400 hover:text-red-500 hover:bg-black transition-colors"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                    </div>
-                    
-                    <div className="absolute top-4 left-4 z-20">
-                       <span className="bg-moto-accent text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg border border-moto-accent/50 backdrop-blur-sm">AKTİF</span>
-                    </div>
-
-                    <div className="h-48 overflow-hidden bg-gray-900 relative">
-                        <img 
-                            src={bike.image} 
-                            alt={bike.model} 
-                            className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent"></div>
-                    </div>
-                    
-                    <div className="p-6">
-                        <div className="flex justify-between items-start mb-1">
-                            <div>
-                                <h4 className="text-xl font-bold text-white">{bike.brand} {bike.model}</h4>
-                                <p className="text-gray-400 text-sm">{bike.year} Model • {bike.color}</p>
-                            </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-3 gap-3 my-4">
-                            <div className="bg-gray-900/50 p-2.5 rounded-lg border border-gray-700">
-                                <div className="flex items-center gap-1.5 text-[10px] text-gray-500 uppercase font-bold mb-1">
-                                    <Gauge className="w-3 h-3" /> KM
-                                </div>
-                                <div className="text-sm text-white font-mono font-medium">{bike.km}</div>
-                            </div>
-                            <div className="bg-gray-900/50 p-2.5 rounded-lg border border-gray-700">
-                                <div className="flex items-center gap-1.5 text-[10px] text-gray-500 uppercase font-bold mb-1">
-                                    <Calendar className="w-3 h-3" /> Bakım
-                                </div>
-                                <div className="text-sm text-white font-mono font-medium">3 Ay Önce</div>
-                            </div>
-                            <div className="bg-gray-900/50 p-2.5 rounded-lg border border-gray-700">
-                                <div className="flex items-center gap-1.5 text-[10px] text-gray-500 uppercase font-bold mb-1">
-                                    <Droplets className="w-3 h-3" /> Yağ
-                                </div>
-                                <div className="text-sm text-green-400 font-medium">İyi</div>
-                            </div>
-                        </div>
-
-                        <Button variant="outline" className="w-full text-xs border-gray-600 hover:border-moto-accent hover:text-moto-accent">Bakım Kaydı Ekle</Button>
-                    </div>
-                  </div>
-              ))}
-
-              {/* Add New Placeholder */}
-              <div 
-                onClick={() => setIsAddBikeModalOpen(true)}
-                className="border-2 border-dashed border-gray-700 rounded-2xl flex flex-col items-center justify-center p-8 text-gray-500 hover:border-moto-accent hover:text-moto-accent hover:bg-moto-accent/5 transition-all cursor-pointer bg-gray-800/20 min-h-[350px]"
-              >
-                 <div className="w-16 h-16 rounded-full bg-gray-800 border border-gray-700 group-hover:border-moto-accent flex items-center justify-center mb-4 transition-colors">
-                    <Plus className="w-8 h-8" />
-                 </div>
-                 <h4 className="font-bold mb-1">Yeni Motor Ekle</h4>
-                 <p className="text-sm text-center max-w-xs text-gray-600">Garajına yeni bir canavar ekle ve ona uygun aksesuarları keşfet.</p>
-              </div>
-            </div>
-
-            {/* Add Bike Modal */}
-            {isAddBikeModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsAddBikeModalOpen(false)}></div>
-                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 w-full max-w-md relative animate-in zoom-in-95 duration-200 shadow-2xl">
-                        <button onClick={() => setIsAddBikeModalOpen(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white">
-                            <X className="w-5 h-5" />
-                        </button>
-                        
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="p-3 bg-moto-accent/10 rounded-lg">
-                                <Bike className="w-6 h-6 text-moto-accent" />
-                            </div>
-                            <h3 className="text-xl font-bold text-white">Garaja Motor Ekle</h3>
-                        </div>
-
-                        <form onSubmit={handleAddBike} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Marka</label>
-                                <select 
-                                    className="w-full bg-black/40 border border-gray-700 rounded-lg p-3 text-white focus:border-moto-accent outline-none"
-                                    value={newBike.brand}
-                                    onChange={(e) => setNewBike({...newBike, brand: e.target.value})}
-                                >
-                                    {POPULAR_BRANDS.map(b => (
-                                        <option key={b.name} value={b.name}>{b.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Model</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="Örn: MT-07, CBR650R"
-                                    className="w-full bg-black/40 border border-gray-700 rounded-lg p-3 text-white focus:border-moto-accent outline-none"
-                                    value={newBike.model}
-                                    onChange={(e) => setNewBike({...newBike, model: e.target.value})}
-                                    required
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Yıl</label>
-                                    <input 
-                                        type="number" 
-                                        placeholder="2024"
-                                        className="w-full bg-black/40 border border-gray-700 rounded-lg p-3 text-white focus:border-moto-accent outline-none"
-                                        value={newBike.year}
-                                        onChange={(e) => setNewBike({...newBike, year: e.target.value})}
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">KM</label>
-                                    <input 
-                                        type="text" 
-                                        placeholder="15000"
-                                        className="w-full bg-black/40 border border-gray-700 rounded-lg p-3 text-white focus:border-moto-accent outline-none"
-                                        value={newBike.km}
-                                        onChange={(e) => setNewBike({...newBike, km: e.target.value})}
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Renk</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="Örn: Kırmızı, Mat Siyah"
-                                    className="w-full bg-black/40 border border-gray-700 rounded-lg p-3 text-white focus:border-moto-accent outline-none"
-                                    value={newBike.color}
-                                    onChange={(e) => setNewBike({...newBike, color: e.target.value})}
-                                    required
-                                />
-                            </div>
-
-                            <div className="pt-4">
-                                <Button type="submit" variant="primary" className="w-full py-3">GARAJA EKLE</Button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-          </div>
-        );
-
-      case 'settings':
-        return (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <h3 className="text-2xl font-bold text-white">Hesap Ayarları</h3>
-            
-            <div className="bg-gray-800 rounded-xl border border-gray-700 divide-y divide-gray-700">
-              <div className="p-6 flex items-center justify-between">
-                <div>
-                  <h4 className="text-white font-medium">Bildirimler</h4>
-                  <p className="text-sm text-gray-400">Kampanya ve sipariş bildirimlerini al.</p>
-                </div>
-                <div className="w-11 h-6 bg-moto-accent rounded-full relative cursor-pointer">
-                   <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow"></div>
-                </div>
-              </div>
-              
-              <div className="p-6 flex items-center justify-between">
-                <div>
-                  <h4 className="text-white font-medium">Bülten Aboneliği</h4>
-                  <p className="text-sm text-gray-400">Haftalık motosiklet bültenine abone ol.</p>
-                </div>
-                <div className="w-11 h-6 bg-gray-600 rounded-full relative cursor-pointer">
-                   <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow"></div>
-                </div>
-              </div>
-
-              <div className="p-6 flex items-center justify-between">
-                <div>
-                  <h4 className="text-white font-medium">İki Adımlı Doğrulama</h4>
-                  <p className="text-sm text-gray-400">Hesabını ekstra güvenli hale getir.</p>
-                </div>
-                 <Button variant="outline" size="sm">Aktifleştir</Button>
-              </div>
-            </div>
-
-            <div className="pt-6">
-               <h4 className="text-red-500 font-bold mb-4 text-sm uppercase tracking-wider">Tehlikeli Bölge</h4>
-               <Button variant="outline" className="border-red-900 text-red-500 hover:bg-red-900/20 hover:border-red-800 hover:text-red-400 w-full sm:w-auto justify-start">
-                  Hesabımı Sil
-               </Button>
-            </div>
-          </div>
-        );
-    }
-  };
+  const progressPercent = Math.min(100, Math.max(0, ((currentPoints - minPoints) / (maxPoints - minPoints)) * 100));
 
   return (
-    <div className="pt-32 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="flex flex-col lg:flex-row gap-8">
-        
-        {/* Sidebar */}
-        <div className="w-full lg:w-64 flex-shrink-0">
-          <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 sticky top-24">
-            <div className="flex flex-col items-center mb-8">
-              <div className="w-24 h-24 rounded-full bg-moto-accent flex items-center justify-center text-4xl font-bold text-white mb-4 ring-4 ring-gray-800 shadow-xl">
-                {user.name.charAt(0)}
-              </div>
-              <h2 className="text-xl font-bold text-white text-center">{user.name}</h2>
-              <p className="text-sm text-gray-400">Motosiklet Tutkunu</p>
+    <div className="min-h-screen bg-background pt-24 pb-12">
+        <div className="max-w-7xl mx-auto px-6">
+            
+            {/* Header Profile Card */}
+            <div className="bg-surface rounded-3xl p-8 mb-8 border border-white/5 flex flex-col md:flex-row items-center gap-8 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-moto-accent/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16"></div>
+                
+                <div className="w-32 h-32 rounded-full border-4 border-moto-accent p-1 relative z-10">
+                    <UserAvatar name={user.name} size={120} />
+                    <div className="absolute -bottom-2 -right-2 bg-surface p-1 rounded-full border border-white/10">
+                        <div className="w-8 h-8 bg-moto-accent rounded-full flex items-center justify-center text-black font-bold">
+                            {user.rank === 'Yol Kaptanı' ? 'K' : user.rank === 'Viraj Ustası' ? 'U' : 'Ç'}
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="text-center md:text-left flex-1 relative z-10">
+                    <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+                        <h1 className="text-4xl font-display font-bold text-gray-900 dark:text-white">{user.name}</h1>
+                        {user.isAdmin && <span className="bg-moto-accent text-surface text-xs font-bold px-2 py-1 rounded">ADMIN</span>}
+                    </div>
+                    <p className="text-gray-500 dark:text-gray-400 font-mono text-sm mb-4">Üyelik Tarihi: {user.joinDate}</p>
+                    
+                    <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                        <div className="bg-background/50 px-4 py-2 rounded-lg border border-white/5">
+                            <span className="block text-moto-accent font-bold text-lg">{orders.length}</span>
+                            <span className="text-xs text-gray-500 uppercase font-bold">Sipariş</span>
+                        </div>
+                        <div className="bg-background/50 px-4 py-2 rounded-lg border border-white/5">
+                            <span className="block text-moto-accent font-bold text-lg">{myBikes.length}</span>
+                            <span className="text-xs text-gray-500 uppercase font-bold">Motor</span>
+                        </div>
+                        <div className="bg-background/50 px-4 py-2 rounded-lg border border-white/5 min-w-[120px]">
+                            <span className="block text-moto-accent font-bold text-lg">{user.points || 0}</span>
+                            <span className="text-xs text-gray-500 uppercase font-bold">Sürücü Puanı</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Gamification Status Card */}
+                <div className="bg-background/60 backdrop-blur-sm p-6 rounded-2xl border border-white/10 w-full md:w-80 relative z-10">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Mevcut Rütbe</span>
+                        <Trophy className="w-4 h-4 text-moto-accent" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-4">{currentRank}</h3>
+                    
+                    <div className="relative h-2 bg-white/10 rounded-full overflow-hidden mb-2">
+                        <div className="absolute top-0 left-0 h-full bg-moto-accent transition-all duration-1000" style={{ width: `${progressPercent}%` }}></div>
+                    </div>
+                    <div className="flex justify-between text-[10px] font-mono text-gray-500">
+                        <span>{currentPoints} Puan</span>
+                        <span>{nextRank === 'Max Seviye' ? 'MAX' : `${maxPoints} Puan`}</span>
+                    </div>
+                    {currentRank === 'Yol Kaptanı' && (
+                        <div className="mt-4 flex items-center gap-2 text-green-500 text-xs font-bold bg-green-500/10 p-2 rounded-lg">
+                            <Star className="w-3 h-3 fill-current" />
+                            %5 Daimi İndirim Aktif
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <nav className="space-y-2">
-              <button 
-                onClick={() => setActiveTab('profile')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'profile' ? 'bg-moto-accent text-white shadow-lg shadow-moto-accent/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-              >
-                <User className="w-5 h-5" />
-                <span>Profilim</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('orders')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'orders' ? 'bg-moto-accent text-white shadow-lg shadow-moto-accent/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-              >
-                <Package className="w-5 h-5" />
-                <span>Siparişlerim</span>
-              </button>
+            <div className="flex flex-col lg:flex-row gap-8">
+                {/* Sidebar */}
+                <div className="w-full lg:w-72 flex-shrink-0 space-y-2">
+                    {[
+                        { id: 'profile', icon: User, label: 'Profil Bilgileri' },
+                        { id: 'orders', icon: Package, label: 'Sipariş Geçmişi' },
+                        { id: 'garage', icon: Bike, label: 'Sanal Garaj' },
+                        { id: 'settings', icon: Settings, label: 'Hesap Ayarları' },
+                    ].map(item => (
+                        <button 
+                            key={item.id}
+                            onClick={() => setActiveTab(item.id as Tab)}
+                            className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl transition-all font-bold text-sm ${activeTab === item.id ? 'bg-moto-accent text-surface shadow-lg shadow-moto-accent/20' : 'bg-surface text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-surface-hover'}`}
+                        >
+                            <item.icon className="w-5 h-5" /> {item.label}
+                        </button>
+                    ))}
 
-              <button 
-                onClick={() => setActiveTab('garage')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'garage' ? 'bg-moto-accent text-white shadow-lg shadow-moto-accent/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-              >
-                <Bike className="w-5 h-5" />
-                <span>Garajım</span>
-              </button>
+                    {user.isAdmin && (
+                        <button 
+                            onClick={() => onNavigate('admin')}
+                            className="w-full flex items-center gap-4 px-6 py-4 rounded-xl transition-all font-bold text-sm bg-gradient-to-r from-surface to-background border border-moto-accent/30 text-moto-accent hover:text-white hover:border-moto-accent mt-6"
+                        >
+                            <LayoutDashboard className="w-5 h-5" /> Yönetici Paneli
+                        </button>
+                    )}
 
-              <button 
-                onClick={() => setActiveTab('settings')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'settings' ? 'bg-moto-accent text-white shadow-lg shadow-moto-accent/20' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-              >
-                <Settings className="w-5 h-5" />
-                <span>Ayarlar</span>
-              </button>
-
-              {/* Admin Link */}
-              {user.isAdmin && (
-                 <div className="pt-4 mt-4 border-t border-gray-800">
-                    <button 
-                        onClick={() => onNavigate('admin_panel')}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-moto-accent border border-moto-accent/30 hover:bg-moto-accent hover:text-white transition-all font-bold shadow-lg shadow-moto-accent/10"
-                    >
-                        <ShieldAlert className="w-5 h-5" />
-                        <span>Yönetici Paneli</span>
+                    <button onClick={onLogout} className="w-full flex items-center gap-4 px-6 py-4 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors font-bold text-sm mt-8 border border-transparent hover:border-red-500/30">
+                        <LogOut className="w-5 h-5" /> Oturumu Kapat
                     </button>
-                 </div>
-              )}
+                </div>
 
-              <div className={`pt-2 ${!user.isAdmin && 'mt-4 border-t border-gray-800'}`}>
-                <button 
-                  onClick={onLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-red-900/20 hover:text-red-500 transition-colors"
-                >
-                  <LogOut className="w-5 h-5" />
-                  <span>Çıkış Yap</span>
-                </button>
-              </div>
-            </nav>
-          </div>
+                {/* Content */}
+                <div className="flex-1 bg-surface rounded-3xl p-8 border border-white/5 min-h-[500px]">
+                    {activeTab === 'profile' && (
+                        <div className="animate-in fade-in space-y-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Profil Bilgileri</h3>
+                                <button onClick={() => setIsEditing(!isEditing)} className="text-moto-accent hover:text-moto-accent-hover text-sm font-bold flex items-center gap-2 transition-colors">
+                                    {isEditing ? <X className="w-4 h-4"/> : <Edit2 className="w-4 h-4"/>} {isEditing ? 'İptal' : 'Düzenle'}
+                                </button>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Ad Soyad</label>
+                                    <input 
+                                        type="text" 
+                                        disabled={!isEditing}
+                                        value={formData.name}
+                                        onChange={e => setFormData({...formData, name: e.target.value})}
+                                        className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:border-moto-accent outline-none transition-colors disabled:opacity-50"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Telefon</label>
+                                    <input 
+                                        type="text" 
+                                        disabled={!isEditing}
+                                        value={formData.phone}
+                                        onChange={e => setFormData({...formData, phone: e.target.value})}
+                                        className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:border-moto-accent outline-none transition-colors disabled:opacity-50"
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Adres</label>
+                                    <textarea 
+                                        disabled={!isEditing}
+                                        value={formData.address}
+                                        onChange={e => setFormData({...formData, address: e.target.value})}
+                                        className="w-full bg-background border border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:border-moto-accent outline-none transition-colors disabled:opacity-50 h-32 resize-none"
+                                    />
+                                </div>
+                            </div>
+                            
+                            {isEditing && (
+                                <div className="flex justify-end pt-4 border-t border-white/5">
+                                    <Button variant="primary" onClick={handleSaveProfile} isLoading={isSaving}>DEĞİŞİKLİKLERİ KAYDET</Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'garage' && (
+                        <div className="animate-in fade-in space-y-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Sanal Garaj</h3>
+                                <Button size="sm" onClick={() => setIsAddBikeModalOpen(true)} className="bg-moto-accent text-surface hover:bg-white"><Plus className="w-4 h-4 mr-2"/> MOTOR EKLE</Button>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {myBikes.map(bike => (
+                                    <div key={bike.id} className="group relative bg-background border border-white/10 rounded-2xl overflow-hidden hover:border-moto-accent transition-all">
+                                        <div className="h-48 relative">
+                                            <img src={bike.image} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent"></div>
+                                            <button onClick={() => handleRemoveBike(bike.id)} className="absolute top-3 right-3 p-2 bg-red-500/80 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <div className="p-5">
+                                            <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{bike.model}</h4>
+                                            <p className="text-moto-accent text-xs font-bold uppercase tracking-wider mb-4">{bike.brand}</p>
+                                            <div className="grid grid-cols-3 gap-2 border-t border-white/5 pt-3">
+                                                <div className="text-center">
+                                                    <span className="block text-[10px] text-gray-500 uppercase font-bold">Yıl</span>
+                                                    <span className="text-gray-900 dark:text-white text-sm font-mono">{bike.year}</span>
+                                                </div>
+                                                <div className="text-center border-l border-white/5">
+                                                    <span className="block text-[10px] text-gray-500 uppercase font-bold">KM</span>
+                                                    <span className="text-gray-900 dark:text-white text-sm font-mono">{bike.km}</span>
+                                                </div>
+                                                <div className="text-center border-l border-white/5">
+                                                    <span className="block text-[10px] text-gray-500 uppercase font-bold">Renk</span>
+                                                    <span className="text-gray-900 dark:text-white text-sm truncate">{bike.color}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'orders' && (
+                        <div className="animate-in fade-in space-y-4">
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Sipariş Geçmişi</h3>
+                            {loadingOrders ? (
+                                <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-moto-accent" /></div>
+                            ) : orders.length === 0 ? (
+                                <div className="text-center py-20 bg-background rounded-2xl border border-white/5">
+                                    <ShoppingBag className="w-16 h-16 text-moto-accent mx-auto mb-4 opacity-50" />
+                                    <p className="text-gray-500 text-sm">Henüz siparişiniz bulunmuyor.</p>
+                                </div>
+                            ) : (
+                                orders.map(order => (
+                                    <div key={order.id} className="bg-background border border-white/10 rounded-xl p-6 hover:border-moto-accent/50 transition-all">
+                                        <div className="flex justify-between items-start mb-4 border-b border-white/5 pb-4">
+                                            <div>
+                                                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mb-1">Sipariş No</span>
+                                                <span className="text-white font-mono font-bold">{order.id}</span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mb-1">Tarih</span>
+                                                <span className="text-white font-mono">{order.date}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4 overflow-x-auto pb-2">
+                                            {order.items.map((item, i) => (
+                                                <div key={i} className="flex-shrink-0 w-16 h-16 bg-white/5 rounded-lg overflow-hidden border border-white/10" title={item.name}>
+                                                    <img src={item.image} className="w-full h-full object-cover" />
+                                                </div>
+                                            ))}
+                                            <div className="flex-1"></div>
+                                            <div className="text-right">
+                                                <span className="block text-2xl font-bold text-moto-accent">₺{order.total.toLocaleString('tr-TR')}</span>
+                                                <span className="inline-block px-3 py-1 bg-green-500/10 text-green-500 text-xs font-bold rounded-full border border-green-500/20">{order.status}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'settings' && (
+                        <div className="animate-in fade-in space-y-8">
+                            <div className="mb-6">
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Hesap Ayarları</h3>
+                                <p className="text-gray-500 text-sm">Uygulama deneyiminizi kişiselleştirin.</p>
+                            </div>
+
+                            <div className="bg-background/50 border border-white/5 rounded-2xl p-6">
+                                <h4 className="font-bold text-white mb-6 flex items-center gap-2">
+                                    <Palette className="w-5 h-5 text-moto-accent" /> Tema Rengi
+                                </h4>
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                                    {colors.map(c => (
+                                        <button
+                                            key={c.id}
+                                            onClick={() => onColorChange && onColorChange(c.id)}
+                                            className={`group relative flex flex-col items-center gap-3 p-4 rounded-xl border transition-all ${colorTheme === c.id ? 'bg-white/10 border-moto-accent ring-1 ring-moto-accent/50' : 'bg-transparent border-white/10 hover:bg-white/5'}`}
+                                        >
+                                            <div className={`w-8 h-8 rounded-full ${c.bg} shadow-lg ${colorTheme === c.id ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-[#18181B]' : 'group-hover:scale-110 transition-transform'}`}></div>
+                                            <span className={`text-xs font-bold ${colorTheme === c.id ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>{c.label}</span>
+                                            {colorTheme === c.id && (
+                                                <div className="absolute top-2 right-2">
+                                                    <CheckCircle className="w-3 h-3 text-moto-accent" />
+                                                </div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1">
-          <div className="bg-gray-900 rounded-2xl p-6 sm:p-10 border border-gray-800 min-h-[600px]">
-            {renderContent()}
-          </div>
-        </div>
-      </div>
+        {/* Add Bike Modal */}
+        {isAddBikeModalOpen && (
+            <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-surface border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl relative">
+                    <button onClick={() => setIsAddBikeModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white"><X className="w-5 h-5"/></button>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2"><Bike className="w-5 h-5 text-moto-accent" /> Yeni Motor Ekle</h3>
+                    
+                    <div className="space-y-4">
+                        <div 
+                            className="w-full aspect-video border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-moto-accent hover:bg-white/5 transition-all relative overflow-hidden group"
+                            onClick={() => bikeFileInputRef.current?.click()}
+                        >
+                            {newBike.image ? (
+                                <img src={newBike.image} className="w-full h-full object-cover" />
+                            ) : (
+                                <>
+                                    {isUploadingBike ? <Loader2 className="w-8 h-8 text-moto-accent animate-spin" /> : <Upload className="w-8 h-8 text-gray-500 mb-2" />}
+                                    <span className="text-xs text-gray-500 font-bold uppercase">Fotoğraf Yükle</span>
+                                </>
+                            )}
+                            <input type="file" ref={bikeFileInputRef} className="hidden" accept="image/*" onChange={handleBikeImageUpload} />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <input type="text" placeholder="Marka (Yamaha)" className="col-span-2 bg-background border border-white/10 rounded-xl p-3 text-gray-900 dark:text-white focus:border-moto-accent outline-none" onChange={e => setNewBike({...newBike, brand: e.target.value})} />
+                            <input type="text" placeholder="Model (MT-07)" className="col-span-2 bg-background border border-white/10 rounded-xl p-3 text-gray-900 dark:text-white focus:border-moto-accent outline-none" onChange={e => setNewBike({...newBike, model: e.target.value})} />
+                            <input type="text" placeholder="Yıl (2023)" className="bg-background border border-white/10 rounded-xl p-3 text-gray-900 dark:text-white focus:border-moto-accent outline-none" onChange={e => setNewBike({...newBike, year: e.target.value})} />
+                            <input type="text" placeholder="KM (12.000)" className="bg-background border border-white/10 rounded-xl p-3 text-gray-900 dark:text-white focus:border-moto-accent outline-none" onChange={e => setNewBike({...newBike, km: e.target.value})} />
+                            <input type="text" placeholder="Renk" className="col-span-2 bg-background border border-white/10 rounded-xl p-3 text-gray-900 dark:text-white focus:border-moto-accent outline-none" onChange={e => setNewBike({...newBike, color: e.target.value})} />
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-4">
+                            <Button variant="outline" onClick={() => setIsAddBikeModalOpen(false)} className="border-white/10 text-gray-400 hover:text-white">İptal</Button>
+                            <Button variant="primary" onClick={handleAddBike} disabled={isUploadingBike}>Ekle</Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 };
